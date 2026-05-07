@@ -9,7 +9,7 @@ export default {
         colors: {
           'sabana-blue': '#001C64', // Azul oscuro Sabana para fondo y botones
           'sabana-light': '#E0EDFF', // Azul claro Sabana para fondo
-          'sabana-blue-light': '#9DC4FF', // Azul claro Sabana para texto #90CAF9
+          'sabana-blue-light': '#9DC4FF', // Azul claro Sabana para texto
           'sabana-softGold': '#FFFADA', // Soft Gold Sabana color piel para errores
           'error-red': '#B00020', // Rojo error
           'error-bg-red': '#FFEBEE', // Fondo rojo error
@@ -19,8 +19,8 @@ export default {
         },
 
         fontFamily: {
-          'roboto': ['Roboto', 'sans-serif'],
-          'roboto-slab': ['Roboto Slab', 'serif'],
+          'roboto': ['Roboto', 'sans-serif'], //Fuente para Texto y UI
+          'roboto-slab': ['Roboto Slab', 'serif'], //Fuente para Títulos y Encabezados        
         },
       },
     },
