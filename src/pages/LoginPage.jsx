@@ -53,7 +53,7 @@ const LoginPage = () => {
         </header>
 
         {/* Formulario en Cápsula Blanca */}
-        <div className="w-full max-w-md bg-default-white rounded-[32px] shadow-2xl p-8 border border-gray-100">
+        <div className="w-full max-w-md bg-default-white rounded-[32px] shadow-2xl p-8 border border-defaultBorder-gray">
           
           <div className="flex items-center justify-center mb-6">
              <div className="h-[1px] bg-gray-100 flex-1"></div>
