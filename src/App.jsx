@@ -1,7 +1,7 @@
-import LoginPage from './pages/RegisterPage';
+import CreateProduct from './pages/CreateProduct.jsx';
 
 function App() {
-  return <LoginPage />;
+  return <CreateProduct />;
 }
 
 export default App;
