@@ -8,12 +8,14 @@ export default {
       extend: {
         colors: {
           'sabana-blue': '#001C64', // Azul oscuro Sabana para fondo y botones
+          'sabana-blue-hover': '#002A96', // Hover para sabana-blue
           'sabana-light': '#E0EDFF', // Azul claro Sabana para fondo
           'sabana-blue-light': '#9DC4FF', // Azul claro Sabana para texto
           'sabana-softGold': '#FFFADA', // Soft Gold Sabana color piel para errores
           'error-red': '#B00020', // Rojo error
           'error-bg-red': '#FFEBEE', // Fondo rojo error
           'default-white': '#FFFFFF', // Blanco por defecto
+          'default-black': '#1A1C1E', // Negro/gris muy oscuro para texto
           'default-gray': '#424242', // Gris por defecto
           'defaultBorder-gray': '#EDF1F3', // Gris por defecto para bordes
         },
