@@ -123,10 +123,45 @@ const RegisterPage = () => {
                 defaultValue=""
               >
                 <option value="" disabled>Selecciona tu carrera</option>
-                <option value="Informatica">Ingeniería Informática</option>
-                <option value="Industrial">Ingeniería Industrial</option>
-                <option value="Civil">Ingeniería Civil</option>
-                <option value="Derecho">Derecho</option>
+                <option value="" disabled>Escuela Internacional de Ciencias Económicas y Administrativas:</option>
+                <option value="Business Administration">Administración de Empresas</option>
+                <option value="Administration & Service">Administración & Servicio</option>
+                <option value="Marketing and International Logistics Administration">Administración de Mercadeo y Logística Internacionales</option>
+                <option value="International Business Administration">Administración de Negocios Internacionales</option>
+                <option value="International Economics and Finance">Economía y Finanzas Internacionales</option>
+                <option value="International Economics and Finance (Online)">Economía y Finanzas Internacionales Virtual</option>
+                <option value="Gastronomy">Gastronomía</option>
+                <option value="" disabled>Facultad de Ciencias del Comportamiento:</option>
+                <option value="Organizational Behavior">Comportamiento Organizacional</option>
+                <option value="Psychology">Psicología</option>
+                <option value="" disabled>Facultad de Comunicación:</option>
+                <option value="Audiovisual and Multimedia Communication">Comunicación Audiovisual y Multimedios</option>
+                <option value="Corporate Communication">Comunicación Corporativa</option>
+                <option value="Social Communication and Journalism">Comunicación Social y Periodismo</option>
+                <option value="" disabled>Facultad de Educación:</option>
+                <option value="Early Childhood Education Teaching Degree">Licenciatura en Educación Infantil</option>
+                <option value="Unisabana College">Unisabana College</option>
+                <option value="" disabled>Facultad de Ciencias de la Vida y el Bienestar:</option>
+                <option value="Nursing">Enfermería</option>
+                <option value="Physiotherapy">Fisioterapia</option>
+                <option value="" disabled>Facultad de Estudios Jurídicos, Políticos e Internacionales:</option>
+                <option value="Political Science">Ciencias Políticas</option>
+                <option value="Law">Derecho</option>
+                <option value="International Relations">Relaciones Internacionales</option>
+                <option value="" disabled>Facultad de Filosofía y Ciencias Humanas:</option>
+                <option value="Philosophy">Filosofía</option>
+                <option value="" disabled>Facultad de Ingeniería:</option>
+                <option value="Data Science">Ciencia de Datos</option>
+                <option value="Bioproduction Engineering">Ingeniería de Bioproducción</option>
+                <option value="Design and Innovation Engineering">Ingeniería de Diseño e Innovación</option>
+                <option value="Mechanical Engineering">Ingeniería Mecánica</option>
+                <option value="Chemical Engineering">Ingeniería Química</option>
+                <option value="Computer Engineering">Ingeniería Informática</option>
+                <option value="Industrial Engineering">Ingeniería Industrial</option>
+                <option value="Civil Engineering">Ingeniería Civil</option>
+                <option value="" disabled>Facultad de Medicina:</option>
+                <option value="Medicine">Medicina</option>
+                
               </select>
             </div>
 
