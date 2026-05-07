@@ -14,6 +14,67 @@ const RegisterPage = () => {
   });
 
   const [showPass, setShowPass] = useState(false);
+  // 1. Nuevo estado para manejar el tipo de error actual
+  const [errorType, setErrorType] = useState(null); 
+
+  // 2. Función de validación y envío
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setErrorType(null); // Reiniciamos errores al intentar enviar
+
+    const { name, lastName, email, password, confirmPassword, career } = formData;
+
+    // --- NUEVA VALIDACIÓN: CAMPOS VACÍOS (DEBE SER LA PRIMERA) ---
+    if (!name || !lastName || !email || !password || !confirmPassword || !career) {
+      setErrorType('EMPTY_FIELDS');
+      return;
+    }
+    const nameRegex = /^[a-zA-ZÀ-ÿ\s]{2,}$/; // Solo letras y min 2 caracteres
+
+    // Validación 1: Dominio Sabana
+    if (!email.endsWith('@unisabana.edu.co')) {
+      setErrorType('DOMAIN_ERROR');
+      return;
+    }
+
+    // Validación 2: Nombre y Apellido
+    if (!nameRegex.test(name) || !nameRegex.test(lastName)) {
+      setErrorType('NAME_ERROR');
+      return;
+    }
+
+    // Validación 3: Longitud Contraseña
+    if (password.length < 6) {
+      setErrorType('PASS_LENGTH_ERROR');
+      return;
+    }
+
+    // Validación 4: Match de Contraseñas
+    if (password !== confirmPassword) {
+      setErrorType('PASS_MATCH_ERROR');
+      return;
+    }
+
+    // Si pasa todo, aquí va tu fetch al backend (Épica 1)
+    console.log("Datos listos para el ConcurrentHashMap:", formData);
+  };
+
+  const getInputStyles = (fields, fieldName = null) => {
+    // Si hay un error de "campos vacíos", solo pintamos de rojo los que REALMENTE están vacíos
+    if (errorType === 'EMPTY_FIELDS') {
+      if (fieldName && !formData[fieldName]) {
+        return "bg-error-bg-red border-error-red";
+      }
+      // Si el campo tiene datos, no debe ponerse rojo aunque el error sea EMPTY_FIELDS
+      return "bg-transparent border-defaultBorder-gray";
+    }
+
+    // Para los demás errores específicos (dominio, nombre, contraseñas)
+    const isError = fields.includes(errorType);
+    return isError 
+      ? "bg-error-bg-red border-error-red" 
+      : "bg-transparent border-defaultBorder-gray";
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -37,9 +98,14 @@ const RegisterPage = () => {
           </button>
           <div className="text-center">
             <h1 className="text-4xl font-bold text-white font-['Roboto_Slab'] mb-1">Regístrate</h1>
-            <p className="text-sabana-blue-light text-sm max-w-[280px] mx-auto leading-tight font-medium">
-              ¡Hola! crea una cuenta con tu correo de la U para disfrutar de nuestros servicios.
-            </p>
+              <p className={`text-sm max-w-[280px] mx-auto leading-tight font-medium ${errorType ? 'text-sabana-softGold' : 'text-sabana-blue-light'}`}>
+                {!errorType && "¡Hola! crea una cuenta con tu correo de la U para disfrutar de nuestros servicios."}
+                {errorType === 'EMPTY_FIELDS' && "¡Ups! parece que hay algún dato sin registrar, por favor verifica y vuelve a intentarlo."}
+                {errorType === 'DOMAIN_ERROR' && "¡Ups! parece que algo salió mal, por favor verifica que el correo tenga dominio de la Universidad de la Sabana."}
+                {errorType === 'NAME_ERROR' && "¡Ups! parece que algo salió mal, por favor verifica que el nombre y/o apellido sea válido y vuelve a intentarlo."}
+                {errorType === 'PASS_LENGTH_ERROR' && "¡Ups! parece que algo salió mal, recuerda que la contraseña debe tener mínimo seis dígitos."}
+                {errorType === 'PASS_MATCH_ERROR' && "¡Ups! parece que algo salió mal, por favor verifica que la contraseña sea la misma en ambos campos y vuelve a intentarlo."}
+              </p>
           </div>
           {/* LOGO CORREGIDO */}
           <img 
@@ -51,11 +117,11 @@ const RegisterPage = () => {
 
         {/* ESTA ES LA CÁPSULA BLANCA PRINCIPAL QUE FALTABA */}
         <div className="w-full max-w-xl bg-white rounded-[32px] shadow-2xl p-8 border border-defaultBorder-gray">
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">  
             
             {/* Fila: Nombre y Apellido */}
             <div className="flex gap-4">
-              <div className="flex-1 rounded-2xl border-2 border-defaultBorder-gray px-5 py-3">
+              <div className={`flex-1 rounded-2xl border-2 px-5 py-3 transition-all ${getInputStyles(['NAME_ERROR'], 'name')}`}>  
                 <label className="block text-gray-400 text-[10px] uppercase font-bold mb-1">Nombre</label>
                 <input 
                   name="name"
@@ -64,7 +130,7 @@ const RegisterPage = () => {
                   onChange={handleChange}
                 />
               </div>
-              <div className="flex-1 rounded-2xl border-2 border-defaultBorder-gray px-5 py-3">
+              <div className={`flex-1 rounded-2xl border-2 px-5 py-3 transition-all ${getInputStyles(['NAME_ERROR'], 'lastName')}`}>
                 <label className="block text-gray-400 text-[10px] uppercase font-bold mb-1">Apellido</label>
                 <input 
                   name="lastName"
@@ -76,7 +142,7 @@ const RegisterPage = () => {
             </div>
 
             {/* Input: Correo */}
-            <div className="rounded-2xl border-2 border-defaultBorder-gray px-5 py-4">
+            <div className={`rounded-2xl border-2 px-5 py-4 transition-all ${getInputStyles(['DOMAIN_ERROR'], 'email')}`}>
               <input 
                 name="email"
                 type="email" 
@@ -87,7 +153,7 @@ const RegisterPage = () => {
             </div>
 
             {/* Input: Contraseña */}
-            <div className="rounded-2xl border-2 border-defaultBorder-gray px-5 py-4 flex justify-between items-center">
+            <div className={`rounded-2xl border-2 px-5 py-4 flex justify-between items-center transition-all ${getInputStyles(['PASS_LENGTH_ERROR', 'PASS_MATCH_ERROR'], 'password')}`}>
               <input 
                 name="password"
                 type={showPass ? "text" : "password"} 
@@ -101,7 +167,7 @@ const RegisterPage = () => {
             </div>
 
             {/* Input: Confirmar Contraseña */}
-            <div className="rounded-2xl border-2 border-defaultBorder-gray px-5 py-4 flex justify-between items-center">
+            <div className={`rounded-2xl border-2 px-5 py-4 flex justify-between items-center transition-all ${getInputStyles(['PASS_MATCH_ERROR'], 'confirmPassword')}`}>
               <input 
                 name="confirmPassword"
                 type={showPass ? "text" : "password"} 
@@ -115,7 +181,7 @@ const RegisterPage = () => {
             </div>
 
             {/* Seleccionador de Carrera */}
-            <div className="rounded-2xl border-2 border-defaultBorder-gray px-5 py-4">
+            <div className={`rounded-2xl border-2 px-5 py-4 transition-all ${getInputStyles(['EMPTY_FIELDS'], 'career')}`}>
               <select 
                 name="career"
                 className="w-full bg-transparent text-default-black font-medium outline-none appearance-none"
