@@ -73,24 +73,53 @@ const PublicShowcase = () => {
             <span className="absolute -top-2 -right-2 bg-sabana-softGold text-sabana-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-sabana-blue">2</span>
           </div>
 
-          <div 
-            onClick={() => {
-              const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-              if (isLoggedIn) {
-                navigate('/inventory'); 
-              } else {
-                navigate('/login');
-              }
-            }}
-            className="flex items-center gap-2 cursor-pointer hover:text-sabana-softGold transition-colors border-l border-default-white/20 pl-5"
-          >
-            <div className="w-8 h-8 rounded-lg bg-default-white/10 flex items-center justify-center">
-              <User size={18} />
+          {/* CONTENEDOR DE USUARIO Y LOGOUT */}
+          <div className="flex items-center gap-4 border-l border-default-white/20 pl-5">
+            {/* Botón Mi Cuenta / Inventario */}
+            <div 
+              onClick={() => {
+                const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+                navigate(isLoggedIn ? '/inventory' : '/login');
+              }}
+              className="flex items-center gap-2 cursor-pointer hover:text-sabana-softGold transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-default-white/10 flex items-center justify-center">
+                <User size={18} />
+              </div>
+              <span className="hidden sm:block text-xs font-bold uppercase tracking-wider">
+                {localStorage.getItem('isLoggedIn') === 'true' ? 'Mi Inventario' : 'Mi Cuenta'}
+              </span>
             </div>
-            <span className="hidden sm:block text-xs font-bold uppercase tracking-wider">
-              {localStorage.getItem('isLoggedIn') === 'true' ? 'Mi Inventario' : 'Mi Cuenta'}
-            </span>
+
+            {/* BOTÓN CERRAR SESIÓN (Solo aparece si está logueado) */}
+            {localStorage.getItem('isLoggedIn') === 'true' && (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('isLoggedIn');
+                  // Opcional: limpiar otros datos como el nombre del usuario si los guardas
+                  window.location.reload(); // Recargamos para que el Navbar se actualice
+                }}
+                className="ml-2 p-2 rounded-lg bg-error-red/10 hover:bg-error-red text-error-red hover:text-default-white transition-all duration-300"
+                title="Cerrar Sesión"
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="18" height="18" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
+            )}
           </div>
+          
         </div>
       </header>
 

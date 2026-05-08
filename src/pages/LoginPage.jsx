@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import smallLogo from '../assets/sabanalogo.png';
+import { ArrowLeft } from 'lucide-react';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -65,13 +66,22 @@ const LoginPage = () => {
 
       <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-8">
         
-        {/* Header - Logo a la izquierda, Título centrado */}
+        {/* Header*/}
         <header className="w-full max-w-xl flex justify-between items-start mb-6">
           <img 
             src={smallLogo} 
             alt="Logo Sabana" 
             className="h-12 w-auto object-contain" 
           />
+          <button 
+            onClick={() => navigate('/')}
+            className="absolute top-6 left-6 flex items-center gap-2 text-sabana-blue font-bold text-sm hover:translate-x-[-4px] transition-all group"
+          >
+            <div className="bg-default-white p-2 rounded-xl shadow-sm group-hover:shadow-md transition-all">
+              <ArrowLeft size={20} />
+            </div>
+            <span className="hidden sm:block">Volver al inicio</span>
+          </button>
           <div className="text-center flex-1 pr-12">
             <h1 className="text-5xl font-bold text-white font-roboto-slab mb-2">Ingresa a tu cuenta</h1>
             <p className={`text-sm max-w-[450px] mx-auto leading-tight font-medium transition-all duration-300 ${hasError ? 'text-sabana-softGold' : 'text-sabana-blue-light'}`}>
