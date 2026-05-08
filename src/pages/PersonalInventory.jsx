@@ -3,8 +3,8 @@ import { Search, Bell, User, Phone, Mail } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import smallLogo from '../assets/sabanalogo.png'; 
 import descargarImg from '../assets/descargar.png';
+import { Link } from 'react-router-dom';
 const PersonalInventory = () => {
-  // Estado inicial simulando la data que vendría de tu "DataStore" en memoria
   const [products, setProducts] = useState([
     {
       id: "1",
@@ -15,8 +15,8 @@ const PersonalInventory = () => {
     }
   ]);
 
+  
   const handleDelete = (id) => {
-    // Lógica para el endpoint DELETE /api/v1/products/{id}
     setProducts(products.filter(product => product.id !== id));
   };
 
@@ -58,7 +58,7 @@ const PersonalInventory = () => {
       <main className="flex-grow container mx-auto px-4 py-12 max-w-5xl">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-default-black mb-2">Tus productos</h1>
-          <a href="/" className="text-sabana-blue-light underline hover:text-sabana-blue-hover">Volver al inicio</a>
+          <Link to="/showcase" className="text-sabana-blue-light underline hover:text-sabana-blue-hover">Volver al inicio</Link>
         </div>
 
         {/* TABLE HEADER */}
