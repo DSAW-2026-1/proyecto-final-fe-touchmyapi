@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import CreateProduct from './pages/CreateProduct';
 import PersonalInventory from './pages/PersonalInventory';
 import SuccessPage from './pages/SuccessPage';
+import ErrorUserExistsPage from './pages/ErrorUserExistsPage';
 
 function App() {
   return (
@@ -21,6 +22,8 @@ function App() {
         <Route path="/inventory" element={<PersonalInventory />} />
         
         <Route path="/success" element={<SuccessPage />} />
+
+        <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
         
       </Routes>
     </BrowserRouter>

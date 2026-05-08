@@ -75,13 +75,19 @@ const RegisterPage = () => {
         }),
       });
 
-      const data = await response.text(); // El backend devuelve un String
+      const data = await response.text();
+      console.log("Respuesta del servidor:", data); // Esto te sirve para debugear en consola
 
-      if (response.ok && data === "Usuario registrado con éxito") {
-        navigate('/success');
-      } else {
-        // Si el backend responde con un error (ej: usuario ya existe)
-        alert(data); 
+      if (response.ok && data.includes("Usuario registrado con éxito")) {
+          navigate('/success');
+      } 
+      // Usamos .includes para que si el servidor manda espacios o saltos de línea, igual funcione
+      else if (data.includes("El usuario ya está registrado con ese correo.")) {
+          navigate('/error-user-exists');
+      } 
+      else {
+          // Si entra aquí es porque ninguna de las anteriores coincidió
+          alert("Mensaje del servidor: " + data);
       }
     } catch (error) {
       console.error("Error conectando al servidor:", error);
