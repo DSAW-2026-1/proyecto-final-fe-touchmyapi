@@ -9,17 +9,18 @@ import ErrorUserExistsPage from './pages/ErrorUserExistsPage';
 import LoginSuccessPage from './pages/LoginSuccessPage';
 import PublicShowcase from './pages/PublicShowcase';
 
+
 function App() {
   return (
     <BrowserRouter> 
       <Routes>
-        {/* Si entran a la raíz, los manda al login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        {/* Si entran a la raíz, los manda:*/}
+        <Route path="/" element={<Navigate to="/home" />} />
         
         {/* Definimos las rutas oficiales */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/showcase" element={<PublicShowcase />} />
+        
         <Route path="/create-product" element={<CreateProduct />} />
         <Route path="/inventory" element={<PersonalInventory />} />
         
@@ -28,6 +29,12 @@ function App() {
         <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
 
         <Route path="/login-success" element={<LoginSuccessPage />} />
+
+        <Route path="/personal-inventory" element={<PersonalInventory />} />
+
+        <Route path="/create-product" element={<CreateProduct />} />
+
+        <Route path="/home" element={<PublicShowcase />} />
         
       </Routes>
     </BrowserRouter>
