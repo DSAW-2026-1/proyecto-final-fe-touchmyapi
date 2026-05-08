@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { IoChevronBack } from 'react-icons/io5';
 import { createProduct } from '../services/productService';
-
+import logoSabana from '../assets/sabanalogo.png'; 
 const NAVY = '#001D4A';
 const SOFT_BG = '#F0F4FF';
 
@@ -142,7 +142,11 @@ const CreateProduct = () => {
               className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/35 bg-white/10 text-white"
               aria-label="Menú"
             >
-              <span className="text-lg leading-none opacity-90">✦</span>
+              <img
+                src={logoSabana}
+                alt="Logo Sabana"
+                className="h-6 w-6 object-contain"
+              />
             </button>
             <div className="text-center">
               <h1 className="font-serif text-2xl font-bold text-white md:text-[1.75rem] tracking-tight">
