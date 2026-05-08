@@ -9,6 +9,7 @@ import ErrorUserExistsPage from './pages/ErrorUserExistsPage';
 import LoginSuccessPage from './pages/LoginSuccessPage';
 import PublicShowcase from './pages/PublicShowcase';
 
+
 function App() {
   return (
     <BrowserRouter> 
@@ -32,6 +33,8 @@ function App() {
         <Route path="/personal-inventory" element={<PersonalInventory />} />
 
         <Route path="/create-product" element={<CreateProduct />} />
+
+        <Route path="/home" element={<PublicShowcase />} />
         
       </Routes>
     </BrowserRouter>

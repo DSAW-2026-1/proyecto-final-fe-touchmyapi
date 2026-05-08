@@ -9,7 +9,7 @@ const LoginSuccessPage = () => {
   useEffect(() => {
     // Redirigimos al Dashboard o Home después de 3 segundos
     const timer = setTimeout(() => {
-      navigate('/personal-inventory'); // ruta principal que decida
+      navigate('/home'); // ruta principal que decida
     }, 5500);
     return () => clearTimeout(timer);
   }, [navigate]);
