@@ -5,14 +5,15 @@ import logoPequeno from '../assets/sabanalogo.png';
 
 const LoginSuccessPage = () => {
   const navigate = useNavigate();
+  localStorage.setItem('isLoggedIn', 'true');
 
   useEffect(() => {
-    // Redirigimos al Dashboard o Home después de 3 segundos
     const timer = setTimeout(() => {
       navigate('/home'); // ruta principal que decida
     }, 5500);
     return () => clearTimeout(timer);
   }, [navigate]);
+
 
   return (
     <main className="h-screen w-full flex flex-col font-['Roboto'] overflow-hidden">

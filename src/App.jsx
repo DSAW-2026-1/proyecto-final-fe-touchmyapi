@@ -14,13 +14,13 @@ function App() {
   return (
     <BrowserRouter> 
       <Routes>
-        {/* Si entran a la raíz, los manda al login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        {/* Si entran a la raíz, los manda:*/}
+        <Route path="/" element={<Navigate to="/home" />} />
         
         {/* Definimos las rutas oficiales */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/showcase" element={<PublicShowcase />} />
+        
         <Route path="/create-product" element={<CreateProduct />} />
         <Route path="/inventory" element={<PersonalInventory />} />
         

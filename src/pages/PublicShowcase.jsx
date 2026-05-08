@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Bell, User, ShoppingCart, Phone, Mail, ArrowRight, ExternalLink } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
 
 const PublicShowcase = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -37,6 +39,7 @@ const PublicShowcase = () => {
     <div className="min-h-screen bg-sabana-light font-sans antialiased">
       
       {/* NAVBAR */}
+
       <header className="bg-sabana-blue px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-3">
           <div className="bg-default-white p-1.5 rounded-xl shadow-sm">
@@ -70,11 +73,23 @@ const PublicShowcase = () => {
             <span className="absolute -top-2 -right-2 bg-sabana-softGold text-sabana-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-sabana-blue">2</span>
           </div>
 
-          <div className="flex items-center gap-2 cursor-pointer hover:text-sabana-softGold transition-colors border-l border-default-white/20 pl-5">
+          <div 
+            onClick={() => {
+              const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+              if (isLoggedIn) {
+                navigate('/inventory'); 
+              } else {
+                navigate('/login');
+              }
+            }}
+            className="flex items-center gap-2 cursor-pointer hover:text-sabana-softGold transition-colors border-l border-default-white/20 pl-5"
+          >
             <div className="w-8 h-8 rounded-lg bg-default-white/10 flex items-center justify-center">
               <User size={18} />
             </div>
-            <span className="hidden sm:block text-xs font-bold uppercase tracking-wider">Mi Cuenta</span>
+            <span className="hidden sm:block text-xs font-bold uppercase tracking-wider">
+              {localStorage.getItem('isLoggedIn') === 'true' ? 'Mi Inventario' : 'Mi Cuenta'}
+            </span>
           </div>
         </div>
       </header>
