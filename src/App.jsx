@@ -7,6 +7,7 @@ import PersonalInventory from './pages/PersonalInventory';
 import SuccessPage from './pages/SuccessPage';
 import ErrorUserExistsPage from './pages/ErrorUserExistsPage';
 import LoginSuccessPage from './pages/LoginSuccessPage';
+import PublicShowcase from './pages/PublicShowcase';
 
 function App() {
   return (
