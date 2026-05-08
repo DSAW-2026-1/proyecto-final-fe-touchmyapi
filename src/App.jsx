@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CreateProduct from './pages/CreateProduct';
 import PersonalInventory from './pages/PersonalInventory';
+import PublicShowcase from './pages/PublicShowcase';
 
 function App() {
   return (
@@ -15,8 +16,8 @@ function App() {
         {/* Definimos las rutas oficiales */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/showcase" element={<PublicShowcase />} />
         <Route path="/create-product" element={<CreateProduct />} />
-        {/* Inventario personal */}
         <Route path="/inventory" element={<PersonalInventory />} />
         
       </Routes>
