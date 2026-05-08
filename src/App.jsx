@@ -4,7 +4,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CreateProduct from './pages/CreateProduct';
 import PersonalInventory from './pages/PersonalInventory';
-import PublicShowcase from './pages/PublicShowcase';
+import SuccessPage from './pages/SuccessPage';
+import ErrorUserExistsPage from './pages/ErrorUserExistsPage';
+import LoginSuccessPage from './pages/LoginSuccessPage';
 
 function App() {
   return (
@@ -19,6 +21,12 @@ function App() {
         <Route path="/showcase" element={<PublicShowcase />} />
         <Route path="/create-product" element={<CreateProduct />} />
         <Route path="/inventory" element={<PersonalInventory />} />
+        
+        <Route path="/success" element={<SuccessPage />} />
+
+        <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
+
+        <Route path="/login-success" element={<LoginSuccessPage />} />
         
       </Routes>
     </BrowserRouter>

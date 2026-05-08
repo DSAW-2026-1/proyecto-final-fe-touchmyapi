@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa';
 // IMPORTANTE: Importamos el logo así para que Vite lo reconozca
-import logoSabana from '../assets/sabanalogo.png'; 
+import smallLogo from '../assets/sabanalogo.png'; 
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ const RegisterPage = () => {
   const [errorType, setErrorType] = useState(null); 
 
   // 2. Función de validación y envío
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorType(null); // Reiniciamos errores al intentar enviar
 
@@ -59,6 +59,40 @@ const RegisterPage = () => {
 
     // Si pasa todo, aquí va tu fetch al backend (Épica 1)
     console.log("Datos listos para el ConcurrentHashMap:", formData);
+    try {
+      const response = await fetch('http://localhost:8080/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Enviamos los datos. Ojo: quitamos confirmPassword porque el backend no lo necesita
+        body: JSON.stringify({
+          name,
+          lastName,
+          email,
+          password,
+          career
+        }),
+      });
+
+      const data = await response.text();
+      console.log("Respuesta del servidor:", data); // Esto te sirve para debugear en consola
+
+      if (response.ok && data.includes("Usuario registrado con éxito")) {
+          navigate('/success');
+      } 
+      // Usamos .includes para que si el servidor manda espacios o saltos de línea, igual funcione
+      else if (data.includes("El usuario ya está registrado con ese correo.")) {
+          navigate('/error-user-exists');
+      } 
+      else {
+          // Si entra aquí es porque ninguna de las anteriores coincidió
+          alert("Mensaje del servidor: " + data);
+      }
+    } catch (error) {
+      console.error("Error conectando al servidor:", error);
+      alert("No se pudo conectar con el servidor. Verificar estado de Backend");
+    }
   };
 
   const getInputStyles = (fields, fieldName = null) => {
@@ -114,7 +148,7 @@ const RegisterPage = () => {
           </div>
           {/* LOGO CORREGIDO */}
           <img 
-            src={logoSabana} 
+            src={smallLogo} 
             alt="Logo Sabana" 
             className="h-12 w-auto object-contain" 
           />

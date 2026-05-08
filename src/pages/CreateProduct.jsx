@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { IoChevronBack } from 'react-icons/io5';
 import { createProduct } from '../services/productService';
-import logoSabana from '../assets/sabanalogo.png'; 
+import smallLogo from '../assets/sabanalogo.png'; 
 const NAVY = '#001D4A';
 const SOFT_BG = '#F0F4FF';
 
@@ -143,7 +143,7 @@ const CreateProduct = () => {
               aria-label="Menú"
             >
               <img
-                src={logoSabana}
+                src={smallLogo}
                 alt="Logo Sabana"
                 className="h-6 w-6 object-contain"
               />

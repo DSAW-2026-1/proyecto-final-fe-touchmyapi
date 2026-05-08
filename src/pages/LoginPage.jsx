@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import logoSabana from '../assets/sabanalogo.png';
+import smallLogo from '../assets/sabanalogo.png';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -11,19 +11,47 @@ const LoginPage = () => {
   const [hasError, setHasError] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => { // Agregamos async
     e.preventDefault();
     setIsSubmitted(true);
   
+    // Validaciones básicas de formato en el Front
     const isEmailValid = email.toLowerCase().endsWith('@unisabana.edu.co');
     const isPasswordValid = password.length >= 6; 
   
     if (!isEmailValid || !isPasswordValid) {
       setHasError(true);
-    } else {
-      setHasError(false);
-      console.log("Login exitoso");
-      
+      return; // No seguimos si el formato está mal
+    }
+
+    try {
+      // Llamada al Backend
+      const response = await fetch('http://localhost:8080/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        }),
+      });
+
+      const data = await response.text();
+      console.log("Respuesta del login:", data);
+
+      if (response.ok && data === "Login exitoso") {
+        setHasError(false);
+        // ¡Aquí usamos la nueva página que diseñamos!
+        navigate('/login-success');
+      } else {
+        // Si el usuario no existe o la contraseña está mal
+        setHasError(true);
+        // Opcional: alert(data); por si quieres ver el error exacto del backend
+      }
+    } catch (error) {
+      console.error("Error en la conexión:", error);
+      alert("No se pudo conectar con el servidor. Verifica que el backend esté corriendo.");
     }
   };
 
@@ -40,7 +68,7 @@ const LoginPage = () => {
         {/* Header - Logo a la izquierda, Título centrado */}
         <header className="w-full max-w-xl flex justify-between items-start mb-6">
           <img 
-            src={logoSabana} 
+            src={smallLogo} 
             alt="Logo Sabana" 
             className="h-12 w-auto object-contain" 
           />
@@ -70,24 +98,30 @@ const LoginPage = () => {
             {/* Input Correo */}
             
             <div className={`rounded-2xl border-2 px-5 py-4 transition-all duration-300 
-                ${(hasError && !email.endsWith('@unisabana.edu.co')) ? 'border-error-red bg-error-bg-red' : 'border-defaultBorder-gray bg-default-white'}`}>
+                ${hasError ? 'border-error-red bg-error-bg-red' : 'border-defaultBorder-gray bg-default-white'}`}>
                 <input 
                     type="email" 
                     placeholder="usuario@unisabana.edu.co"
                     className="w-full outline-none text-default-gray font-medium bg-transparent"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                        setEmail(e.target.value);
+                        if(hasError) setHasError(false); // Limpiamos el error cuando el usuario vuelva a escribir
+                    }}
                 />
             </div>
 
             {/* Input Contraseña */}
             <div className={`rounded-2xl border-2 px-5 py-4 flex justify-between items-center transition-all duration-300 
-                ${(hasError && password.length < 6) ? 'border-error-red bg-error-bg-red' : 'border-defaultBorder-gray bg-default-white'}`}>
+                ${hasError ? 'border-error-red bg-error-bg-red' : 'border-defaultBorder-gray bg-default-white'}`}>
                 <input 
                     type={showPass ? "text" : "password"} 
                     placeholder="*******"
                     className="w-full outline-none text-default-gray font-medium bg-transparent"
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                        setPassword(e.target.value);
+                        if(hasError) setHasError(false); // Limpiamos el error al escribir
+                    }}
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)} className="text-gray-400">
                     {showPass ? <FaEyeSlash /> : <FaEye />}
