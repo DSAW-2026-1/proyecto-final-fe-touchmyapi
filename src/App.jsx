@@ -27,6 +27,10 @@ function App() {
         <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
 
         <Route path="/login-success" element={<LoginSuccessPage />} />
+
+        <Route path="/personal-inventory" element={<PersonalInventory />} />
+
+        <Route path="/create-product" element={<CreateProduct />} />
         
       </Routes>
     </BrowserRouter>

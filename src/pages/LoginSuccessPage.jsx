@@ -9,7 +9,7 @@ const LoginSuccessPage = () => {
   useEffect(() => {
     // Redirigimos al Dashboard o Home después de 3 segundos
     const timer = setTimeout(() => {
-      navigate('/login'); // O la ruta principal que decidas para el Marketplace
+      navigate('/personal-inventory'); // ruta principal que decida
     }, 5500);
     return () => clearTimeout(timer);
   }, [navigate]);
