@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa';
 // IMPORTANTE: Importamos el logo así para que Vite lo reconozca
 import logoSabana from '../assets/sabanalogo.png'; 
 
 const RegisterPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     lastName: '',
@@ -93,7 +95,10 @@ const RegisterPage = () => {
         
         {/* Header con Iconos */}
         <header className="w-full max-w-xl flex justify-between items-start mb-6">
-          <button className="text-white text-xl mt-2 hover:opacity-70 transition-opacity">
+          <button 
+            onClick={() => navigate('/login')} 
+            className="text-white text-xl mt-2 hover:opacity-70 transition-opacity"
+          >
             <FaArrowLeft />
           </button>
           <div className="text-center">
@@ -244,7 +249,13 @@ const RegisterPage = () => {
         </div>
 
         <p className="mt-6 text-sm text-sabana-blue font-medium">
-          ¿Ya tienes una cuenta? <span className="font-bold underline cursor-pointer">Inicia sesión</span>
+          ¿Ya tienes una cuenta?{' '}
+          <span 
+            onClick={() => navigate('/login')} 
+            className="font-bold underline cursor-pointer"
+          >
+            Inicia sesión
+          </span>
         </p>
       </section>
     </main>

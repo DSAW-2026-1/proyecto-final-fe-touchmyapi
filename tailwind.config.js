@@ -7,8 +7,8 @@ export default {
     theme: {
       extend: {
         colors: {
-          'sabana-blue': '#001C64', // Azul oscuro Sabana para fondo y botones
-          'sabana-blue-hover': '#002A96', // Hover para sabana-blue
+          'sabana-blue': '#001C64', // Azul oscuro Sabana para fondo y botones (cambio de estado con el mouse)
+          'sabana-blue-hover': '#002A96', // Azul más oscuro para botones
           'sabana-light': '#E0EDFF', // Azul claro Sabana para fondo
           'sabana-blue-light': '#9DC4FF', // Azul claro Sabana para texto
           'sabana-softGold': '#FFFADA', // Soft Gold Sabana color piel para errores

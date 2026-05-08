@@ -1,8 +1,10 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -105,8 +107,14 @@ const LoginPage = () => {
         </div>
 
         {/* Footer de la página */}
-        <p className="mt-6 text-sm text-gray-700 font-medium">
-          ¿No tienes cuenta? <span className="text-sabana-blue font-bold underline cursor-pointer">¡Regístrate ahora!</span>
+        <p className="mt-6 text-sm">
+          ¿No tienes cuenta?{' '}
+          <span 
+            onClick={() => navigate('/register')} 
+            className="font-bold underline cursor-pointer hover:text-sabana-blue-hover transition-colors"
+          >
+            ¡Regístrate ahora!
+          </span>
         </p>
       </section>
     </main>
