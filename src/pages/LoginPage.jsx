@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import logoSabana from '../assets/sabanalogo.png';
+import smallLogo from '../assets/sabanalogo.png';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -40,7 +40,7 @@ const LoginPage = () => {
         {/* Header - Logo a la izquierda, Título centrado */}
         <header className="w-full max-w-xl flex justify-between items-start mb-6">
           <img 
-            src={logoSabana} 
+            src={smallLogo} 
             alt="Logo Sabana" 
             className="h-12 w-auto object-contain" 
           />

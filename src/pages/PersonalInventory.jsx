@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Bell, User, Phone, Mail } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
-import logoSabana from '../assets/sabanalogo.png'; 
+import smallLogo from '../assets/sabanalogo.png'; 
 import descargarImg from '../assets/descargar.png';
 const PersonalInventory = () => {
   // Estado inicial simulando la data que vendría de tu "DataStore" en memoria
@@ -28,7 +28,7 @@ const PersonalInventory = () => {
           {/* Logo Sabana Placeholder */}
           <div className="w-10 h-10 bg-default-white rounded-full flex items-center justify-center p-1">
           <img 
-            src={logoSabana} 
+            src={smallLogo} 
             alt="Logo Sabana" 
             className="h-12 w-auto object-contain" 
           />
@@ -122,7 +122,7 @@ const PersonalInventory = () => {
           <div className="flex items-center gap-6">
             <div className="w-20 h-24 border-2 border-default-white/20 flex items-center justify-center p-2">
                 <img
-                  src={logoSabana}
+                  src={smallLogo}
                   alt="Logo Sabana"
                   className="h-16 w-auto object-contain"
                 />

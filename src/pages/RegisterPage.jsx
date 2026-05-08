@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import { FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa';
 // IMPORTANTE: Importamos el logo así para que Vite lo reconozca
-import logoSabana from '../assets/sabanalogo.png'; 
+import smallLogo from '../assets/sabanalogo.png'; 
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ const RegisterPage = () => {
   const [errorType, setErrorType] = useState(null); 
 
   // 2. Función de validación y envío
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorType(null); // Reiniciamos errores al intentar enviar
 
@@ -59,6 +59,34 @@ const RegisterPage = () => {
 
     // Si pasa todo, aquí va tu fetch al backend (Épica 1)
     console.log("Datos listos para el ConcurrentHashMap:", formData);
+    try {
+      const response = await fetch('http://localhost:8080/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Enviamos los datos. Ojo: quitamos confirmPassword porque el backend no lo necesita
+        body: JSON.stringify({
+          name,
+          lastName,
+          email,
+          password,
+          career
+        }),
+      });
+
+      const data = await response.text(); // El backend devuelve un String
+
+      if (response.ok && data === "Usuario registrado con éxito") {
+        navigate('/success');
+      } else {
+        // Si el backend responde con un error (ej: usuario ya existe)
+        alert(data); 
+      }
+    } catch (error) {
+      console.error("Error conectando al servidor:", error);
+      alert("No se pudo conectar con el servidor. Verificar estado de Backend");
+    }
   };
 
   const getInputStyles = (fields, fieldName = null) => {
@@ -114,7 +142,7 @@ const RegisterPage = () => {
           </div>
           {/* LOGO CORREGIDO */}
           <img 
-            src={logoSabana} 
+            src={smallLogo} 
             alt="Logo Sabana" 
             className="h-12 w-auto object-contain" 
           />

@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CreateProduct from './pages/CreateProduct';
 import PersonalInventory from './pages/PersonalInventory';
+import SuccessPage from './pages/SuccessPage';
 
 function App() {
   return (
@@ -18,6 +19,8 @@ function App() {
         <Route path="/create-product" element={<CreateProduct />} />
         {/* Inventario personal */}
         <Route path="/inventory" element={<PersonalInventory />} />
+        
+        <Route path="/success" element={<SuccessPage />} />
         
       </Routes>
     </BrowserRouter>
