@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Bell, User, ShoppingCart, Phone, Mail } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
+import unisabanalogocomplete from '../assets/unisabanalogocomplete.png';
 const PublicShowcase = () => {
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -79,7 +80,7 @@ const PublicShowcase = () => {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="bg-sabana-light/95 p-12 flex-col items-center max-w-sm border border-defaultBorder-gray">
             <div className="mb-6 flex flex-col items-center">
-               <img src="https://tse1.mm.bing.net/th/id/OIP.EzuPZdsS0-fWyOsT_6adAAHaF6?rs=1&pid=ImgDetMain&o=7&rm=3" alt="Universidad de La Sabana" />
+               <img src={unisabanalogocomplete} alt="Universidad de La Sabana" />
             </div>
           </div>
         </div>
