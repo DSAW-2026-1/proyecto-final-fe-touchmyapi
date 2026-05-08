@@ -19,6 +19,7 @@ const CreateProduct = () => {
     title: '',
     price: '',
     category: '',
+    stock: '1',
     description: '',
     condition: '',
     imageUrl: '',
@@ -44,6 +45,10 @@ const CreateProduct = () => {
   const validateForm = () => {
     const newErrors = {};
     const MAX_PRICE = 1_000_000_000_000;
+    const numericStock = Number(formData.stock);
+    if (formData.stock === '' || Number.isNaN(numericStock) || numericStock < 0) {
+      newErrors.stock = 'El stock no puede ser negativo';
+    }
 
     // --- VALIDACIONES ORIGINALES ---
     if (!formData.title.trim()) newErrors.title = 'El nombre del producto es obligatorio';
@@ -92,6 +97,7 @@ const CreateProduct = () => {
         title: formData.title.trim(),
         description: formData.description.trim(),
         price: Number(formData.price),
+        stock: Number(formData.stock),
         category: formData.category,
         condition: formData.condition,
         ...(imageUrl ? { imageUrl } : {}),
@@ -187,21 +193,58 @@ const CreateProduct = () => {
               {fieldErrors.description && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.description}</p>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
-                  Precio (COP)
-                </label>
-                <input
-                  name="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={handleChange}
-                  placeholder="0"
-                  className={getInputClass('price')}
-                />
-                {fieldErrors.price && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.price}</p>}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* PRECIO */}
+            <div>
+              <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
+                Precio (COP)
+              </label>
+              <input
+                name="price"
+                type="number"
+                value={formData.price}
+                onChange={handleChange}
+                placeholder="0"
+                className={getInputClass('price')}
+              />
+              {fieldErrors.price && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.price}</p>}
+            </div>
+
+            {/* STOCK - ¡El nuevo integrante! */}
+            <div>
+              <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
+                Cantidad (Stock)
+              </label>
+              <input
+                name="stock"
+                type="number"
+                min="1"
+                value={formData.stock}
+                onChange={handleChange}
+                placeholder="1"
+                className={getInputClass('stock')}
+              />
+              {fieldErrors.stock && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.stock}</p>}
+            </div>
+
+            {/* ESTADO */}
+            <div>
+              <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
+                Estado
+              </label>
+              <select
+                name="condition"
+                value={formData.condition}
+                onChange={handleChange}
+                className={getInputClass('condition')}
+              >
+                <option value="">Selecciona</option>
+                <option value="NEW">Nuevo</option>
+                <option value="USED">Usado</option>
+              </select>
+              {fieldErrors.condition && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.condition}</p>}
+            </div>
+          </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
@@ -220,24 +263,6 @@ const CreateProduct = () => {
                 </select>
                 {fieldErrors.category && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.category}</p>}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
-                Estado del artículo
-              </label>
-              <select
-                name="condition"
-                value={formData.condition}
-                onChange={handleChange}
-                className={getInputClass('condition')}
-              >
-                <option value="">Selecciona</option>
-                <option value="NEW">Nuevo</option>
-                <option value="USED">Usado</option>
-              </select>
-              {fieldErrors.condition && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.condition}</p>}
-            </div>
 
             <div>
               <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
