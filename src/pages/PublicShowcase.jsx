@@ -154,7 +154,7 @@ const PublicShowcase = () => {
                 <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
               </div>
               <div className="px-2 pb-2">
-                <span className="text-[10px] font-bold text-sabana-softGold uppercase tracking-widest">{product.category}</span>
+                <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">{product.category}</span>
                 <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.name}</h3>
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
