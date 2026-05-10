@@ -33,14 +33,22 @@ const PersonalInventory = () => {
   const handleDelete = async (id) => {
     if (window.confirm("¿Seguro que quieres borrar este producto?")) {
       try {
-        const response = await fetch(`http://localhost:8080/api/v1/products/${id}`, {
+        // 1. Usar la variable de entorno para la URL base
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+        // 2. Realizar la petición DELETE a Railway (o localhost en desarrollo)
+        const response = await fetch(`${API_BASE_URL}/api/v1/products/${id}`, {
           method: 'DELETE',
         });
+
         if (response.ok) {
           setProducts(products.filter(product => product.id !== id));
+        } else {
+          alert("El servidor no permitió borrar el producto.");
         }
       } catch (error) {
-        alert("Error al intentar borrar.");
+        console.error("Error al borrar:", error);
+        alert("Error al intentar conectar con el servidor.");
       }
     }
   };

@@ -104,11 +104,12 @@ const CreateProduct = () => {
         ownerEmail: 'jusselth@unisabana.edu.co',
       };
 
-      const response = await fetch('http://localhost:8080/api/v1/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${API_BASE_URL}/api/v1/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
 
       if (response.ok) {
         alert('¡Producto publicado con éxito!');

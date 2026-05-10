@@ -60,12 +60,16 @@ const RegisterPage = () => {
     // Si pasa todo, aquí va tu fetch al backend (Épica 1)
     console.log("Datos listos para el ConcurrentHashMap:", formData);
     try {
-      const response = await fetch('http://localhost:8080/api/auth/register', {
+      // 1. Usar la variable de entorno para la URL base
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+      // 2. Llamada dinámica al endpoint de registro
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Enviamos los datos. Ojo: quitamos confirmPassword porque el backend no lo necesita
+        // Enviamos los datos.
         body: JSON.stringify({
           name,
           lastName,
