@@ -13,7 +13,8 @@ const PersonalInventory = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/v1/products');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const response = await fetch(`${API_BASE_URL}/products?email=jusselth@unisabana.edu.co`);
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
