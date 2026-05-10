@@ -88,9 +88,20 @@ const CreateProduct = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // 1. Validamos el formulario antes de seguir
     if (!validateForm()) return;
 
+    // 2. Sacamos el correo de quien inició sesión
+    const loggedUserEmail = localStorage.getItem('userEmail');
+
+    if (!loggedUserEmail) {
+      setError("No hay una sesión activa. Por favor inicia sesión.");
+      return;
+    }
+
     setLoading(true);
+    
     try {
       const imageUrl = formData.imageUrl.trim();
       const payload = {
@@ -101,7 +112,7 @@ const CreateProduct = () => {
         category: formData.category,
         condition: formData.condition,
         ...(imageUrl ? { imageUrl } : {}),
-        ownerEmail: 'jusselth@unisabana.edu.co',
+        ownerEmail: loggedUserEmail, // <--- El correo dinámico
       };
 
       const response = await fetch('http://localhost:8080/api/v1/products', {
@@ -112,7 +123,7 @@ const CreateProduct = () => {
 
       if (response.ok) {
         alert('¡Producto publicado con éxito!');
-        navigate('/inventory'); // Ajusta esta ruta a la de tu PersonalInventory
+        navigate('/inventory'); 
       } else {
         const errorData = await response.text();
         throw new Error(errorData || 'No se pudo publicar el producto');

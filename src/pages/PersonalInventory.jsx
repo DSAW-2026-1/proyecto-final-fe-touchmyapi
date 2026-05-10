@@ -13,7 +13,17 @@ const PersonalInventory = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/v1/products');
+      // Sacamos el email que guardamos en el login
+      const userEmail = localStorage.getItem('userEmail');
+      
+      if (!userEmail) {
+        navigate('/login'); // Si no hay email, no debería estar aquí
+        return;
+      }
+
+      // Llamamos al nuevo endpoint filtrado por email
+      const response = await fetch(`http://localhost:8080/api/v1/products/owner/${userEmail}`);
+      
       if (response.ok) {
         const data = await response.json();
         setProducts(data);

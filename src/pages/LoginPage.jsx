@@ -43,7 +43,9 @@ const LoginPage = () => {
 
       if (response.ok && data === "Login exitoso") {
         setHasError(false);
-        // ¡Aquí usamos la nueva página que diseñamos!
+        // GUARDAMOS EL EMAIL PARA IDENTIFICAR AL DUEÑO
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('userEmail', email.toLowerCase().trim());
         navigate('/login-success');
       } else {
         // Si el usuario no existe o la contraseña está mal
