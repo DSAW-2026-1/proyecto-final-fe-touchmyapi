@@ -25,7 +25,8 @@ const PersonalInventory = () => {
       }
 
       // Asegúrate de que el endpoint coincida con tu @GetMapping del backend
-      const response = await fetch(`${API_BASE_URL}/products/owner/${userEmail}`);
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${VITE_API_URL}/products/owner/${userEmail}`);
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -45,7 +46,7 @@ const PersonalInventory = () => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer.")) {
       try {
         const apiUrl = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${API_BASE_URL}/api/v1/products/${id}`, {
+        const response = await fetch(`${VITE_API_URL}/api/v1/products/${id}`, {
           method: 'DELETE',
         });
 
