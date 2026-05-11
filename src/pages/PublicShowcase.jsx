@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, User, ShoppingCart, Phone, Mail, ArrowRight, ExternalLink } from 'lucide-react';
+import { Search, Bell, User, ShoppingCart, Phone, Mail, ArrowRight, ExternalLink, X } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
@@ -9,23 +9,75 @@ const PublicShowcase = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const CATEGORY_LABELS = {
+    'ACADEMIC_SUPPLIES': 'Útiles académicos',
+    'BOOKS': 'Libros',
+    'ELECTRONICS': 'Electrónica',
+    'CLOTHING': 'Ropa',
+    'FOOD': 'Comida',
+    'SERVICES': 'Servicios',
+    'OTHER': 'Otros',
+  };
 
   useEffect(() => {
-    const mockProducts = [
-      { id: 1, name: "iPad usado", price: 1000000, category: "Electrónica", image: "https://photos.enjoei.com.br/ipad-pro-11-polegadas-4a-geracao-chip-m2-128-gb-wi-fi-cellular-cinza-espacial-115940100/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy81NTA4NDgzL2I5MjgwNmI1NWQ5NGU1NmNjYmFhOTM2MDY2ZjE0OWQ5LmpwZw"},
-      { id: 2, name: "Cargador tipo C", price: 36000, category: "Accesorios", image: "https://m.media-amazon.com/images/I/61cws8I2EzL._AC_.jpg" },
-      { id: 3, name: "AirPods", price: 800000, category: "Audio", image: "https://i.ebayimg.com/images/g/vgAAAOSwcF1lg3Vv/s-l1600.webp" },
-      { id: 4, name: "Libro - Cálculo I", price: 57000, category: "Libros", image: "https://m.media-amazon.com/images/I/71HU6XkiZ5L._SL1024_.jpg" },
-      { id: 5, name: "Calculadora", price: 45000, category: "Estudio", image: "https://i.ebayimg.com/images/g/SxYAAOSwdgtjoT19/s-l1600.webp" },
-      { id: 6, name: "Lapiceros", price: 18000, category: "Papelería", image: "https://plazavea.vteximg.com.br/arquivos/ids/292755-1000-1000/20169705.jpg?v=637166952632400000" },
-      { id: 7, name: "Gorra U Sabana", price: 40000, category: "Merchandising", image: "https://i.ebayimg.com/images/g/7DoAAOSwm0Zm4D30/s-l1600.webp" },
-    ];
-    setProducts(mockProducts);
+    const fetchAllProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/api/v1/products');
+        const dbProducts = await response.json();
+
+        const mockProducts = [
+          { 
+            id: 'm1', 
+            title: "iPad usado", 
+            price: 1000000, 
+            stock: 1,
+            category: "ELECTRÓNICA", 
+            imageUrl: "https://photos.enjoei.com.br/ipad-pro-11-polegadas-4a-geracao-chip-m2-128-gb-wi-fi-cellular-cinza-espacial-115940100/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy81NTA4NDgzL2I5MjgwNmI1NWQ5NGU1NmNjYmFhOTM2MDY2ZjE0OWQ5LmpwZw"
+          },
+          { 
+            id: 'm2', 
+            title: "Cargador tipo C", 
+            price: 36000, 
+            stock: 1,
+            category: "ELECTRÓNICA", 
+            imageUrl: "https://m.media-amazon.com/images/I/61cws8I2EzL._AC_.jpg" 
+          },
+          { 
+            id: 'm3', 
+            title: "AirPods Pro", 
+            price: 800000, 
+            stock: 1,
+            category: "ELECTRÓNICA", 
+            imageUrl: "https://i.ebayimg.com/images/g/vgAAAOSwcF1lg3Vv/s-l1600.webp" 
+          }
+        ];
+
+        // Combinamos todo
+        setProducts([...dbProducts, ...mockProducts]);
+      } catch (error) {
+        console.error("Error al cargar productos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllProducts();
   }, []);
 
   const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    product.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  // 1. Calculamos el promedio de stock
+  const totalStock = products.reduce((acc, prod) => acc + (prod.stock || 0), 0);
+  const averageStock = products.length > 0 ? totalStock / products.length : 0;
+
+  // 2. Filtramos los productos
+  const popularProducts = products.filter(product => (product.stock || 0) > averageStock);
+
+  // 3. Los ordenamos de mayor a menor stock
+  const sortedPopular = [...popularProducts].sort((a, b) => (b.stock || 0) - (a.stock || 0));
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -33,6 +85,72 @@ const PublicShowcase = () => {
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(value);
+  };
+  const ProductModal = ({ product, onClose }) => {
+    if (!product) return null;
+  
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        {/* FONDO CON BLUR */}
+        <div 
+          className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md"
+          onClick={onClose}
+        ></div>
+  
+        {/* TARJETA */}
+        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row transition-all animate-in fade-in zoom-in duration-300">
+          {/* BOTÓN CERRAR */}
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md"
+          >
+            <X size={20} />
+          </button>
+  
+          {/* IMAGEN  */}
+          <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light">
+            <img 
+              src={product.imageUrl || logoSabana} 
+              alt={product.title}
+              className="w-full h-full object-cover"
+              onError={(e) => { e.target.src = logoSabana; }}
+            />
+          </div>
+  
+          {/* INFO */}
+          <div className="p-8 md:w-1/2 flex flex-col">
+            <div className="flex gap-2 mb-3">
+              <span className="text-[10px] font-bold bg-sabana-softGold/10 text-sabana-blue-light px-2 py-1 rounded-md uppercase">
+                {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${
+                product.condition === 'NEW' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+              }`}>
+                {product.condition === 'NEW' ? 'Nuevo' : 'Usado'}
+              </span>
+            </div>
+  
+            <h2 className="text-2xl font-black text-sabana-blue mb-3">{product.title}</h2>
+            <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+              {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
+            </p>
+  
+            <div className="mt-auto flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
+                <p className="text-2xl font-black text-sabana-blue">
+                   {/* Usamos tu función formatCurrency que ya existe */}
+                   {formatCurrency(product.price)}
+                </p>
+              </div>
+              <button className="bg-sabana-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-sabana-blue-hover transition-all shadow-md active:scale-95">
+                Contactar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -148,51 +266,113 @@ const PublicShowcase = () => {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredProducts.map((product) => (
-            <div key={product.id} className="group bg-default-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all duration-500 border border-transparent hover:border-sabana-softGold/20">
-              <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              </div>
-              <div className="px-2 pb-2">
-                <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">{product.category}</span>
-                <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.name}</h3>
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-                  <button className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-default-white transition-colors">
-                    <ShoppingCart size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* MÁS POPULARES */}
-        <section className="mt-24 bg-default-white rounded-[40px] p-10 md:p-16 shadow-xl border border-sabana-blue/5">
-          <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
-            <div>
-              <h2 className="text-3xl font-bold text-sabana-blue tracking-tight">Más Populares en el Campus</h2>
-              <p className="text-default-gray mt-2 font-medium">Los favoritos de los estudiantes esta semana.</p>
-            </div>
-            <button className="flex items-center gap-2 text-sabana-blue font-bold hover:gap-4 transition-all">
-              Ver todo el catálogo <ArrowRight size={20} />
-            </button>
+        {filteredProducts.map((product) => (
+        <div 
+          key={product.id} 
+          onClick={() => setSelectedProduct(product)} 
+          className="group bg-default-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20"
+        >
+          {/*Contenedor de Imagen */}
+          <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
+            <img
+              src={product.imageUrl || logoSabana}
+              alt={product.title}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              onError={(e) => { e.target.src = logoSabana; }}
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {products.slice(4, 7).map((product) => (
-              <div key={product.id} className="flex gap-4 items-center p-4 rounded-2xl hover:bg-sabana-light transition-colors cursor-pointer">
-                <img src={product.image} alt={product.name} className="w-24 h-24 rounded-xl object-cover shadow-md" />
-                <div>
-                  <h3 className="font-bold text-sabana-blue">{product.name}</h3>
-                  <p className="text-sabana-blue/60 text-sm font-medium">{product.category}</p>
-                  <p className="text-lg font-bold text-sabana-blue mt-1">{formatCurrency(product.price)}</p>
+          {/* 2. Info del producto*/}
+          <div className="px-2 pb-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-tighter transition-all duration-300 ${
+                product.stock === 1 ? 'text-error-red animate-pulse bg-error-bg-red px-2 py-0.5 rounded-md' : 'text-default-gray/60'
+              }`}>
+                {product.stock === 1 ? '¡Última unidad!' : `Disponible(s): ${product.stock || 0}`}
+              </span>
+            </div>
+            
+            <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">
+              {product.title}
+            </h3>
+
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+              <button 
+              className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-default-white transition-colors"
+              onClick={(e) => {
+                e.stopPropagation(); // Evita que se abra el modal
+                console.log("Añadido al carrito:", product.title);
+                // Aquí podrías llamar a tu función de agregar al carrito si la tienes
+              }}>
+                <ShoppingCart size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+        </div>
+
+        {/* SECCIÓN MÁS POPULARES */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
+              <p className="text-default-gray mt-1 text-sm">Los artículos con mayor disponibilidad hoy.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            
+            {sortedPopular && sortedPopular.length > 0 ? (
+              sortedPopular.slice(0, 4).map((product) => (
+                <div 
+                  key={product.id} 
+                  onClick={() => setSelectedProduct(product)} 
+                  className="group bg-default-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all duration-500 border border-transparent hover:border-sabana-softGold/20 cursor-pointer"
+                >
+                  <div className="relative aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
+                    <img
+                      src={product.imageUrl || logoSabana}
+                      alt={product.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => { e.target.src = logoSabana; }}
+                    />
+                    <div className="absolute top-3 right-3 bg-sabana-softGold text-sabana-blue text-[10px] font-black px-2 py-1 rounded-lg shadow-sm">
+                        TENDENCIA: {product.stock} DISPONIBLES
+                    </div>
+                  </div>
+
+                  <div className="px-2 pb-2">
+                    <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                      {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                    </span>
+                    <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
+                    
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                      <button
+                        type="button"
+                        className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-default-white transition-colors"
+                        onClick={(e) => e.stopPropagation()} 
+                      >
+                        <ShoppingCart size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="col-span-full text-center text-default-gray opacity-60">Calculando tendencias...</p>
+            )}
           </div>
         </section>
       </main>
+
+      
 
       {/* FOOTER */}
       <footer className="bg-sabana-blue text-default-white pt-20 pb-10">
@@ -244,6 +424,10 @@ const PublicShowcase = () => {
           </div>
         </div>
       </footer>
+      <ProductModal 
+           product={selectedProduct} 
+           onClose={() => setSelectedProduct(null)} 
+         />
     </div>
   );
 };
