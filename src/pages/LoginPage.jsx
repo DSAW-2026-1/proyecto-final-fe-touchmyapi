@@ -34,7 +34,7 @@ const LoginPage = () => {
     try {
       // Ajustamos la ruta para que coincida con tu backend desplegado
       const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${API_BASE_URL}api/v1/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

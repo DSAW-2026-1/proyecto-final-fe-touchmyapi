@@ -45,7 +45,7 @@ const PersonalInventory = () => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer.")) {
       try {
         const apiUrl = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${API_BASE_URL}api/v1/products/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/products/${id}`, {
           method: 'DELETE',
         });
 
@@ -106,7 +106,7 @@ const PersonalInventory = () => {
       setIsSaving(true);
       try {
         const apiUrl = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${API_BASE_URL}api/v1/products/${product.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/products/${product.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),

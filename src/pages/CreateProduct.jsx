@@ -117,7 +117,7 @@ const CreateProduct = () => {
       };
 
       const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${API_BASE_URL}api/v1/products`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

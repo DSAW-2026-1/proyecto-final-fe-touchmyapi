@@ -29,7 +29,7 @@ const PublicShowcase = () => {
       try {
         // En despliegue, esta URL sea una variable de entorno
         const apiUrl = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${apiUrl}api/v1/products`);
+        const response = await fetch(`${apiUrl}/api/v1/products`);
         
         if (!response.ok) throw new Error('Error en la red');
         const dbProducts = await response.json();
