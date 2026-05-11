@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, User, ShoppingCart, Phone, Mail, ArrowRight, ExternalLink, X } from 'lucide-react';
+import { Search, Bell, User, ShoppingCart, Phone, Mail, ArrowRight, ExternalLink, X, LogOut } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
@@ -11,6 +11,7 @@ const PublicShowcase = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+
   const CATEGORY_LABELS = {
     'ACADEMIC_SUPPLIES': 'Útiles académicos',
     'BOOKS': 'Libros',
@@ -21,10 +22,16 @@ const PublicShowcase = () => {
     'OTHER': 'Otros',
   };
 
+  // 1. Fetch de productos con manejo de errores robusto para producción
   useEffect(() => {
+    let isMounted = true;
     const fetchAllProducts = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/v1/products');
+        // En despliegue, asegúrate de que esta URL sea una variable de entorno
+        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:8080/api/v1/products';
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) throw new Error('Error en la red');
         const dbProducts = await response.json();
 
         const mockProducts = [
@@ -33,81 +40,77 @@ const PublicShowcase = () => {
             title: "iPad usado", 
             price: 1000000, 
             stock: 1,
-            category: "ELECTRÓNICA", 
+            category: "ELECTRONICS", 
+            condition: "USED",
             imageUrl: "https://photos.enjoei.com.br/ipad-pro-11-polegadas-4a-geracao-chip-m2-128-gb-wi-fi-cellular-cinza-espacial-115940100/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy81NTA4NDgzL2I5MjgwNmI1NWQ5NGU1NmNjYmFhOTM2MDY2ZjE0OWQ5LmpwZw"
           },
           { 
             id: 'm2', 
             title: "Cargador tipo C", 
             price: 36000, 
-            stock: 1,
-            category: "ELECTRÓNICA", 
+            stock: 5,
+            category: "ELECTRONICS", 
+            condition: "NEW",
             imageUrl: "https://m.media-amazon.com/images/I/61cws8I2EzL._AC_.jpg" 
-          },
-          { 
-            id: 'm3', 
-            title: "AirPods Pro", 
-            price: 800000, 
-            stock: 1,
-            category: "ELECTRÓNICA", 
-            imageUrl: "https://i.ebayimg.com/images/g/vgAAAOSwcF1lg3Vv/s-l1600.webp" 
           }
         ];
 
-        // Combinamos todo
-        setProducts([...dbProducts, ...mockProducts]);
+        if (isMounted) {
+          setProducts([...dbProducts, ...mockProducts]);
+        }
       } catch (error) {
         console.error("Error al cargar productos:", error);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchAllProducts();
+    return () => { isMounted = false; };
   }, []);
 
-  const filteredProducts = products.filter(product =>
-    product.title?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  // 1. Calculamos el promedio de stock
-  const totalStock = products.reduce((acc, prod) => acc + (prod.stock || 0), 0);
-  const averageStock = products.length > 0 ? totalStock / products.length : 0;
+  // 2. Optimizamos filtrado y cálculos con useMemo para evitar re-renders costosos
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.title?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
 
-  // 2. Filtramos los productos
-  const popularProducts = products.filter(product => (product.stock || 0) > averageStock);
+  const sortedPopular = useMemo(() => {
+    if (products.length === 0) return [];
+    const totalStock = products.reduce((acc, prod) => acc + (prod.stock || 0), 0);
+    const averageStock = totalStock / products.length;
+    return products
+      .filter(product => (product.stock || 0) > averageStock)
+      .sort((a, b) => (b.stock || 0) - (a.stock || 0))
+      .slice(0, 4);
+  }, [products]);
 
-  // 3. Los ordenamos de mayor a menor stock
-  const sortedPopular = [...popularProducts].sort((a, b) => (b.stock || 0) - (a.stock || 0));
-
-  const formatCurrency = (value) => {
+  const formatCurrency = useCallback((value) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(value);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    window.location.reload();
   };
+
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+  // Componente Modal Extraído para limpieza
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
-  
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        {/* FONDO CON BLUR */}
-        <div 
-          className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md"
-          onClick={onClose}
-        ></div>
-  
-        {/* TARJETA */}
-        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row transition-all animate-in fade-in zoom-in duration-300">
-          {/* BOTÓN CERRAR */}
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md"
-          >
+        <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
+        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in zoom-in duration-300">
+          <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md">
             <X size={20} />
           </button>
-  
-          {/* IMAGEN  */}
           <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light">
             <img 
               src={product.imageUrl || logoSabana} 
@@ -116,8 +119,6 @@ const PublicShowcase = () => {
               onError={(e) => { e.target.src = logoSabana; }}
             />
           </div>
-  
-          {/* INFO */}
           <div className="p-8 md:w-1/2 flex flex-col">
             <div className="flex gap-2 mb-3">
               <span className="text-[10px] font-bold bg-sabana-softGold/10 text-sabana-blue-light px-2 py-1 rounded-md uppercase">
@@ -129,19 +130,14 @@ const PublicShowcase = () => {
                 {product.condition === 'NEW' ? 'Nuevo' : 'Usado'}
               </span>
             </div>
-  
             <h2 className="text-2xl font-black text-sabana-blue mb-3">{product.title}</h2>
             <p className="text-gray-600 text-sm mb-6 leading-relaxed">
               {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
             </p>
-  
             <div className="mt-auto flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
-                <p className="text-2xl font-black text-sabana-blue">
-                   {/* Usamos tu función formatCurrency que ya existe */}
-                   {formatCurrency(product.price)}
-                </p>
+                <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
               </div>
               <button className="bg-sabana-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-sabana-blue-hover transition-all shadow-md active:scale-95">
                 Contactar
@@ -155,15 +151,13 @@ const PublicShowcase = () => {
 
   return (
     <div className="min-h-screen bg-sabana-light font-sans antialiased">
-      
       {/* NAVBAR */}
-
       <header className="bg-sabana-blue px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="bg-default-white p-1.5 rounded-xl shadow-sm">
+          <div className="bg-white p-1.5 rounded-xl shadow-sm">
             <img src={logoSabana} alt="Logo Sabana" className="h-8 w-auto object-contain" />
           </div>
-          <span className="hidden lg:block text-default-white font-bold tracking-tight">Marketplace Unisabana</span>
+          <span className="hidden lg:block text-white font-bold tracking-tight">Marketplace Unisabana</span>
         </div>
         
         <div className="flex-1 max-w-2xl mx-8">
@@ -171,19 +165,18 @@ const PublicShowcase = () => {
             <input 
               type="text" 
               placeholder="¿Qué estás buscando hoy?" 
-              className="w-full py-2.5 px-12 rounded-2xl bg-default-white/10 text-default-white placeholder:text-default-white/60 focus:bg-default-white focus:text-sabana-blue focus:outline-none transition-all shadow-inner text-sm"
+              className="w-full py-2.5 px-12 rounded-2xl bg-white/10 text-white placeholder:text-white/60 focus:bg-white focus:text-sabana-blue focus:outline-none transition-all shadow-inner text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="absolute left-4 top-2.5 text-default-white/50 group-focus-within:text-sabana-blue w-5 h-5 transition-colors" />
+            <Search className="absolute left-4 top-2.5 text-white/50 group-focus-within:text-sabana-blue w-5 h-5 transition-colors" />
           </div>
         </div>
 
-        <div className="flex items-center gap-5 text-default-white">
-          {/* CAMPANA DE NOTIFICACIONES REINTEGRADA */}
+        <div className="flex items-center gap-5 text-white">
           <div className="relative cursor-pointer hover:text-sabana-softGold transition-colors">
             <Bell size={22} />
-            <span className="absolute -top-1 -right-1 bg-error-red w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
+            <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
           </div>
 
           <div className="relative cursor-pointer group">
@@ -191,53 +184,29 @@ const PublicShowcase = () => {
             <span className="absolute -top-2 -right-2 bg-sabana-softGold text-sabana-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-sabana-blue">2</span>
           </div>
 
-          {/* CONTENEDOR DE USUARIO Y LOGOUT */}
-          <div className="flex items-center gap-4 border-l border-default-white/20 pl-5">
-            {/* Botón Mi Cuenta / Inventario */}
+          <div className="flex items-center gap-4 border-l border-white/20 pl-5">
             <div 
-              onClick={() => {
-                const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-                navigate(isLoggedIn ? '/inventory' : '/login');
-              }}
+              onClick={() => navigate(isLoggedIn ? '/inventory' : '/login')}
               className="flex items-center gap-2 cursor-pointer hover:text-sabana-softGold transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-default-white/10 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
                 <User size={18} />
               </div>
               <span className="hidden sm:block text-xs font-bold uppercase tracking-wider">
-                {localStorage.getItem('isLoggedIn') === 'true' ? 'Mi Inventario' : 'Mi Cuenta'}
+                {isLoggedIn ? 'Mi Inventario' : 'Mi Cuenta'}
               </span>
             </div>
 
-            {/* BOTÓN CERRAR SESIÓN (Solo aparece si está logueado) */}
-            {localStorage.getItem('isLoggedIn') === 'true' && (
+            {isLoggedIn && (
               <button
-                onClick={() => {
-                  localStorage.removeItem('isLoggedIn');
-                  // Opcional: limpiar otros datos como el nombre del usuario si los guardas
-                  window.location.reload(); // Recargamos para que el Navbar se actualice
-                }}
-                className="ml-2 p-2 rounded-lg bg-error-red/10 hover:bg-error-red text-error-red hover:text-default-white transition-all duration-300"
+                onClick={handleLogout}
+                className="ml-2 p-2 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all duration-300"
                 title="Cerrar Sesión"
               >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="18" height="18" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
+                <LogOut size={18} />
               </button>
             )}
           </div>
-          
         </div>
       </header>
 
@@ -251,88 +220,29 @@ const PublicShowcase = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-sabana-blue/90 to-transparent"></div>
         <div className="relative z-10 container mx-auto px-10 flex flex-col items-start">
            <img src={unisabanalogowhite} alt="Universidad de La Sabana" className="h-20 mb-6 drop-shadow-lg" />
-           <h1 className="text-4xl md:text-5xl font-bold text-default-white max-w-xl leading-tight">
+           <h1 className="text-4xl md:text-5xl font-bold text-white max-w-xl leading-tight">
              El mercado oficial de la comunidad <span className="text-sabana-softGold">Sabana</span>
            </h1>
-           <p className="text-default-white/80 mt-4 text-lg max-w-md">Compra y vende artículos de forma segura dentro de tu campus universitario.</p>
+           <p className="text-white/80 mt-4 text-lg max-w-md">Compra y vende artículos de forma segura dentro de tu campus universitario.</p>
         </div>
       </section>
 
-      {/* PRODUCTOS */}
       <main className="container mx-auto px-6 py-16">
-        <div className="flex items-center justify-between mb-12">
-          <h2 className="text-3xl font-bold text-sabana-blue tracking-tight">Explorar Productos</h2>
-          <div className="h-1 flex-1 mx-8 bg-sabana-blue/5 rounded-full"></div>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        {filteredProducts.map((product) => (
-        <div 
-          key={product.id} 
-          onClick={() => setSelectedProduct(product)} 
-          className="group bg-default-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20"
-        >
-          {/*Contenedor de Imagen */}
-          <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
-            <img
-              src={product.imageUrl || logoSabana}
-              alt={product.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-              onError={(e) => { e.target.src = logoSabana; }}
-            />
-          </div>
-
-          {/* 2. Info del producto*/}
-          <div className="px-2 pb-2">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
-                {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-              </span>
-              <span className={`text-[10px] font-bold uppercase tracking-tighter transition-all duration-300 ${
-                product.stock === 1 ? 'text-error-red animate-pulse bg-error-bg-red px-2 py-0.5 rounded-md' : 'text-default-gray/60'
-              }`}>
-                {product.stock === 1 ? '¡Última unidad!' : `Disponible(s): ${product.stock || 0}`}
-              </span>
+        {/* SECCIÓN MÁS POPULARES (Primero para impacto visual) */}
+        {sortedPopular.length > 0 && (
+          <section className="mb-20">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
+                <p className="text-gray-500 mt-1 text-sm">Los artículos con mayor disponibilidad hoy.</p>
+              </div>
             </div>
-            
-            <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">
-              {product.title}
-            </h3>
-
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-              <button 
-              className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-default-white transition-colors"
-              onClick={(e) => {
-                e.stopPropagation(); // Evita que se abra el modal
-                console.log("Añadido al carrito:", product.title);
-                // Aquí podrías llamar a tu función de agregar al carrito si la tienes
-              }}>
-                <ShoppingCart size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-        </div>
-
-        {/* SECCIÓN MÁS POPULARES */}
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
-              <p className="text-default-gray mt-1 text-sm">Los artículos con mayor disponibilidad hoy.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            
-            {sortedPopular && sortedPopular.length > 0 ? (
-              sortedPopular.slice(0, 4).map((product) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {sortedPopular.map((product) => (
                 <div 
-                  key={product.id} 
+                  key={`popular-${product.id}`} 
                   onClick={() => setSelectedProduct(product)} 
-                  className="group bg-default-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all duration-500 border border-transparent hover:border-sabana-softGold/20 cursor-pointer"
+                  className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all duration-500 border border-transparent hover:border-sabana-softGold/20 cursor-pointer"
                 >
                   <div className="relative aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
                     <img
@@ -342,92 +252,122 @@ const PublicShowcase = () => {
                       onError={(e) => { e.target.src = logoSabana; }}
                     />
                     <div className="absolute top-3 right-3 bg-sabana-softGold text-sabana-blue text-[10px] font-black px-2 py-1 rounded-lg shadow-sm">
-                        TENDENCIA: {product.stock} DISPONIBLES
+                      TENDENCIA: {product.stock} DISPONIBLES
                     </div>
                   </div>
-
-                  <div className="px-2 pb-2">
+                  <div className="px-2">
                     <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
                       {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
                     </span>
                     <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
-                    
                     <div className="flex items-center justify-between mt-4">
                       <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-                      <button
-                        type="button"
-                        className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-default-white transition-colors"
-                        onClick={(e) => e.stopPropagation()} 
-                      >
+                      <div className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors">
                         <ShoppingCart size={18} />
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="col-span-full text-center text-default-gray opacity-60">Calculando tendencias...</p>
-            )}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* TODOS LOS PRODUCTOS */}
+        <div className="flex items-center justify-between mb-12">
+          <h2 className="text-3xl font-bold text-sabana-blue tracking-tight">Explorar Productos</h2>
+          <div className="h-1 flex-1 mx-8 bg-sabana-blue/5 rounded-full"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {loading ? (
+            Array(4).fill(0).map((_, i) => (
+              <div key={i} className="h-80 bg-gray-200 animate-pulse rounded-3xl" />
+            ))
+          ) : filteredProducts.map((product) => (
+            <div 
+              key={product.id} 
+              onClick={() => setSelectedProduct(product)} 
+              className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20"
+            >
+              <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
+                <img
+                  src={product.imageUrl || logoSabana}
+                  alt={product.title}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  onError={(e) => { e.target.src = logoSabana; }}
+                />
+              </div>
+              <div className="px-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                    {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                  </span>
+                  <span className={`text-[10px] font-bold uppercase transition-all ${
+                    product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'
+                  }`}>
+                    {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                  <div className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors">
+                    <ShoppingCart size={18} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </main>
 
-      
-
       {/* FOOTER */}
-      <footer className="bg-sabana-blue text-default-white pt-20 pb-10">
+      <footer className="bg-sabana-blue text-white pt-20 pb-10">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 border-b border-default-white/10 pb-16">
-            
-            <div className="col-span-1 md:col-span-1">
-              <img src={logoSabana} alt="Logo" className="h-12 bg-default-white p-2 rounded-xl mb-6" />
-              <p className="text-default-white/60 text-sm leading-relaxed font-medium">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 border-b border-white/10 pb-16">
+            <div className="col-span-1">
+              <img src={logoSabana} alt="Logo" className="h-12 bg-white p-2 rounded-xl mb-6" />
+              <p className="text-white/60 text-sm leading-relaxed">
                 El punto de encuentro oficial para el comercio seguro dentro del campus de la Universidad de La Sabana.
               </p>
             </div>
-
             <div>
               <h4 className="font-bold mb-6 text-sabana-softGold uppercase tracking-widest text-xs">Marketplace</h4>
-              <ul className="space-y-4 text-sm text-default-white/80">
-                <li className="hover:text-default-white cursor-pointer transition-colors font-medium">Todos los productos</li>
-                <li className="hover:text-default-white cursor-pointer transition-colors font-medium">Publicar artículo</li>
-                <li className="hover:text-default-white cursor-pointer transition-colors font-medium">Términos y condiciones</li>
+              <ul className="space-y-4 text-sm text-white/80">
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Todos los productos</li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Publicar artículo</li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Términos y condiciones</li>
               </ul>
             </div>
-
             <div>
               <h4 className="font-bold mb-6 text-sabana-softGold uppercase tracking-widest text-xs">Universidad</h4>
-              <ul className="space-y-4 text-sm text-default-white/80">
-                <li className="flex items-center gap-2 hover:text-default-white cursor-pointer transition-colors font-medium">
+              <ul className="space-y-4 text-sm text-white/80">
+                <li className="flex items-center gap-2 hover:text-sabana-softGold cursor-pointer transition-colors">
                    Campus Chía <ExternalLink size={14} />
                 </li>
-                <li className="hover:text-default-white cursor-pointer transition-colors font-medium">Directorio Estudiantil</li>
-                <li className="hover:text-default-white cursor-pointer transition-colors font-medium">Soporte Técnico</li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Directorio Estudiantil</li>
               </ul>
             </div>
-
             <div>
               <h4 className="font-bold mb-6 text-sabana-softGold uppercase tracking-widest text-xs">Contacto Directo</h4>
               <div className="flex gap-4 mb-6">
                 {[FaInstagram, Phone, Mail].map((Icon, idx) => (
-                  <div key={idx} className="w-10 h-10 rounded-xl bg-default-white/5 border border-default-white/10 flex items-center justify-center hover:bg-sabana-softGold hover:text-sabana-blue transition-all cursor-pointer">
+                  <div key={idx} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-sabana-softGold hover:text-sabana-blue transition-all cursor-pointer">
                     <Icon size={20} />
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-default-white/40 font-bold">© 2026 Universidad de La Sabana</p>
+              <p className="text-xs text-white/40 font-bold">© 2026 Universidad de La Sabana</p>
             </div>
           </div>
-          
-          <div className="text-center text-[10px] text-default-white/20 font-bold uppercase tracking-[0.3em]">
+          <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.3em]">
             Personas que inspiran personas - Marketplace
           </div>
         </div>
       </footer>
-      <ProductModal 
-           product={selectedProduct} 
-           onClose={() => setSelectedProduct(null)} 
-         />
+
+      <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
     </div>
   );
 };

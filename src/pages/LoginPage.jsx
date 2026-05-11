@@ -4,62 +4,67 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import smallLogo from '../assets/sabanalogo.png';
 import { ArrowLeft } from 'lucide-react';
 
+// Configuración de la API para despliegue
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => { // Agregamos async
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setIsSubmitted(true);
-  
-    // Validaciones básicas de formato en el Front
-    const isEmailValid = email.toLowerCase().endsWith('@unisabana.edu.co');
-    const isPasswordValid = password.length >= 6; 
-  
+    
+    // Validaciones básicas de formato
+    const cleanEmail = email.toLowerCase().trim();
+    const isEmailValid = cleanEmail.endsWith('@unisabana.edu.co');
+    const isPasswordValid = password.length >= 6;
+
     if (!isEmailValid || !isPasswordValid) {
       setHasError(true);
-      return; // No seguimos si el formato está mal
+      return;
     }
+
+    setLoading(true);
+    setHasError(false);
+
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      // Ajustamos la ruta para que coincida con tu backend desplegado
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: email,
+          email: cleanEmail,
           password: password
         }),
       });
 
       const data = await response.text();
-      console.log("Respuesta del login:", data);
 
-      if (response.ok && data === "Login exitoso") {
-        setHasError(false);
-        // GUARDAMOS EL EMAIL PARA IDENTIFICAR AL DUEÑO
+      if (response.ok && data.includes("exitoso")) {
+        // GUARDAMOS DATOS DE SESIÓN
         localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userEmail', email.toLowerCase().trim());
+        localStorage.setItem('userEmail', cleanEmail);
         navigate('/login-success');
       } else {
-        // Si el usuario no existe o la contraseña está mal
         setHasError(true);
-        // Opcional: alert(data); por si quieres ver el error exacto del backend
       }
     } catch (error) {
       console.error("Error en la conexión:", error);
-      alert("No se pudo conectar con el servidor. Verifica que el backend esté corriendo.");
+      alert("No se pudo conectar con el servidor de la Sabana. Verifica tu conexión.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <main className="min-h-screen w-full relative font-roboto overflow-hidden">
-      {/* Fondo usando variables de tailwind.config.js */}
+      {/* Fondo dual */}
       <div className="absolute inset-0 z-0">
         <div className="h-1/2 w-full bg-sabana-blue"></div>
         <div className="h-1/2 w-full bg-sabana-light"></div>
@@ -67,7 +72,7 @@ const LoginPage = () => {
 
       <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-8">
         
-        {/* Header*/}
+        {/* Header */}
         <header className="w-full max-w-xl flex justify-between items-start mb-6">
           <img 
             src={smallLogo} 
@@ -83,17 +88,18 @@ const LoginPage = () => {
             </div>
             <span className="hidden sm:block">Volver al inicio</span>
           </button>
+          
           <div className="text-center flex-1 pr-12">
-            <h1 className="text-5xl font-bold text-white font-roboto-slab mb-2">Ingresa a tu cuenta</h1>
+            <h1 className="text-5xl font-bold text-white font-roboto-slab mb-2 tracking-tight">Ingresa a tu cuenta</h1>
             <p className={`text-sm max-w-[450px] mx-auto leading-tight font-medium transition-all duration-300 ${hasError ? 'text-sabana-softGold' : 'text-sabana-blue-light'}`}>
               {hasError 
-                ? '¡Ups! parece que algo salió mal, por favor verifica que el correo tenga dominio de la Universidad de la Sabana o que la contraseña sea correcta y vuelve a intentarlo.'
-                : '¡Hola! por favor ingresa con tu correo de la U para poder acceder a nuestros servicios.'}
+                ? '¡Ups! Parece que algo salió mal. Verifica que el correo sea @unisabana.edu.co o que la contraseña sea correcta.'
+                : '¡Hola! Por favor ingresa con tu correo de la U para poder acceder a nuestros servicios.'}
             </p>
           </div>
         </header>
 
-        {/* Formulario en Cápsula Blanca */}
+        {/* Formulario */}
         <div className="w-full max-w-md bg-default-white rounded-[32px] shadow-2xl p-8 border border-defaultBorder-gray">
           
           <div className="flex items-center justify-center mb-6">
@@ -107,7 +113,6 @@ const LoginPage = () => {
           <form onSubmit={handleLogin} className="space-y-4">
             
             {/* Input Correo */}
-            
             <div className={`rounded-2xl border-2 px-5 py-4 transition-all duration-300 
                 ${hasError ? 'border-error-red bg-error-bg-red' : 'border-defaultBorder-gray bg-default-white'}`}>
                 <input 
@@ -117,8 +122,9 @@ const LoginPage = () => {
                     value={email}
                     onChange={(e) => {
                         setEmail(e.target.value);
-                        if(hasError) setHasError(false); // Limpiamos el error cuando el usuario vuelva a escribir
+                        if(hasError) setHasError(false);
                     }}
+                    required
                 />
             </div>
 
@@ -129,13 +135,15 @@ const LoginPage = () => {
                     type={showPass ? "text" : "password"} 
                     placeholder="*******"
                     className="w-full outline-none text-default-gray font-medium bg-transparent"
+                    value={password}
                     onChange={(e) => {
                         setPassword(e.target.value);
-                        if(hasError) setHasError(false); // Limpiamos el error al escribir
+                        if(hasError) setHasError(false);
                     }}
+                    required
                 />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="text-gray-400">
-                    {showPass ? <FaEyeSlash /> : <FaEye />}
+                <button type="button" onClick={() => setShowPass(!showPass)} className="text-gray-400 hover:text-sabana-blue transition-colors">
+                    {showPass ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
                 </button>
             </div>
 
@@ -143,20 +151,22 @@ const LoginPage = () => {
             <div className="pt-4">
               <button 
                 type="submit"
-                className="w-full bg-sabana-blue text-default-white font-bold py-4 rounded-2xl shadow-lg hover:bg-opacity-90 transition-all uppercase tracking-widest text-sm"
+                disabled={loading}
+                className={`w-full bg-sabana-blue text-default-white font-bold py-4 rounded-2xl shadow-lg transition-all uppercase tracking-widest text-sm
+                ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-sabana-blue-hover active:scale-[0.98]'}`}
               >
-                Iniciar Sesión
+                {loading ? 'Verificando...' : 'Iniciar Sesión'}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Footer de la página */}
-        <p className="mt-6 text-sm">
+        {/* Footer */}
+        <p className="mt-6 text-sm text-sabana-blue font-medium">
           ¿No tienes cuenta?{' '}
           <span 
             onClick={() => navigate('/register')} 
-            className="font-bold underline cursor-pointer hover:text-sabana-blue-hover transition-colors"
+            className="font-black underline cursor-pointer hover:text-sabana-blue-hover transition-colors"
           >
             ¡Regístrate ahora!
           </span>

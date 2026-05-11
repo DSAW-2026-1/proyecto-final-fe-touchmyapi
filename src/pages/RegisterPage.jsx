@@ -1,11 +1,14 @@
+import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import React, { useState } from 'react';
 import { FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa';
-// IMPORTANTE: Importamos el logo así para que Vite lo reconozca
-import smallLogo from '../assets/sabanalogo.png'; 
+import smallLogo from '../assets/sabanalogo.png';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const [showPass, setShowPass] = useState(false);
+  const [errorType, setErrorType] = useState(null);
+  const [loading, setLoading] = useState(false); // Estado para evitar doble envío
+  
   const [formData, setFormData] = useState({
     name: '',
     lastName: '',
@@ -15,283 +18,178 @@ const RegisterPage = () => {
     career: ''
   });
 
-  const [showPass, setShowPass] = useState(false);
-  // 1. Nuevo estado para manejar el tipo de error actual
-  const [errorType, setErrorType] = useState(null); 
+  // 1. Mensajes de error centralizados para limpieza del JSX
+  const errorMessages = useMemo(() => ({
+    EMPTY_FIELDS: "¡Ups! parece que hay algún dato sin registrar, por favor verifica y vuelve a intentarlo.",
+    DOMAIN_ERROR: "¡Ups! parece que algo salió mal, por favor verifica que el correo sea @unisabana.edu.co.",
+    NAME_ERROR: "¡Ups! parece que algo salió mal, verifica que el nombre y apellido sean válidos.",
+    PASS_LENGTH_ERROR: "¡Ups! algo salió mal, la contraseña debe tener mínimo seis caracteres.",
+    PASS_MATCH_ERROR: "¡Ups! las contraseñas no coinciden, por favor verifica e intenta de nuevo.",
+    DEFAULT: "¡Hola! crea una cuenta con tu correo de la U para disfrutar de nuestros servicios."
+  }), []);
 
-  // 2. Función de validación y envío
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Limpiamos el error mientras el usuario escribe para mejorar la UX
+    setErrorType(null);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorType(null); // Reiniciamos errores al intentar enviar
+    if (loading) return; // Evita múltiples clics
 
     const { name, lastName, email, password, confirmPassword, career } = formData;
+    const nameRegex = /^[a-zA-ZÀ-ÿ\s]{2,}$/;
 
-    // --- NUEVA VALIDACIÓN: CAMPOS VACÍOS (DEBE SER LA PRIMERA) ---
+    // --- Validaciones Lógicas ---
     if (!name || !lastName || !email || !password || !confirmPassword || !career) {
-      setErrorType('EMPTY_FIELDS');
-      return;
+      return setErrorType('EMPTY_FIELDS');
     }
-    const nameRegex = /^[a-zA-ZÀ-ÿ\s]{2,}$/; // Solo letras y min 2 caracteres
-
-    // Validación 1: Dominio Sabana
-    if (!email.endsWith('@unisabana.edu.co')) {
-      setErrorType('DOMAIN_ERROR');
-      return;
+    if (!email.toLowerCase().endsWith('@unisabana.edu.co')) {
+      return setErrorType('DOMAIN_ERROR');
     }
-
-    // Validación 2: Nombre y Apellido
     if (!nameRegex.test(name) || !nameRegex.test(lastName)) {
-      setErrorType('NAME_ERROR');
-      return;
+      return setErrorType('NAME_ERROR');
     }
-
-    // Validación 3: Longitud Contraseña
     if (password.length < 6) {
-      setErrorType('PASS_LENGTH_ERROR');
-      return;
+      return setErrorType('PASS_LENGTH_ERROR');
     }
-
-    // Validación 4: Match de Contraseñas
     if (password !== confirmPassword) {
-      setErrorType('PASS_MATCH_ERROR');
-      return;
+      return setErrorType('PASS_MATCH_ERROR');
     }
 
-    // Si pasa todo, aquí va tu fetch al backend (Épica 1)
-    console.log("Datos listos para el ConcurrentHashMap:", formData);
+    setLoading(true);
     try {
-      // 1. Usar la variable de entorno para la URL base
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
-      // 2. Llamada dinámica al endpoint de registro
+      
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Enviamos los datos.
-        body: JSON.stringify({
-          name,
-          lastName,
-          email,
-          password,
-          career
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, lastName, email, password, career }),
       });
 
       const data = await response.text();
-      console.log("Respuesta del servidor:", data); // Esto te sirve para debugear en consola
 
       if (response.ok && data.includes("Usuario registrado con éxito")) {
-          navigate('/success');
-      } 
-      // Usamos .includes para que si el servidor manda espacios o saltos de línea, igual funcione
-      else if (data.includes("El usuario ya está registrado con ese correo.")) {
-          navigate('/error-user-exists');
-      } 
-      else {
-          // Si entra aquí es porque ninguna de las anteriores coincidió
-          alert("Mensaje del servidor: " + data);
+        navigate('/success');
+      } else if (data.includes("ya está registrado")) {
+        navigate('/error-user-exists');
+      } else {
+        alert(`Aviso: ${data}`);
       }
     } catch (error) {
-      console.error("Error conectando al servidor:", error);
-      alert("No se pudo conectar con el servidor. Verificar estado de Backend");
+      console.error("Error de conexión:", error);
+      alert("Error de conexión con el servidor. Por favor, verifica tu internet o el estado del servicio.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getInputStyles = (fields, fieldName = null) => {
-    // Si hay un error de "campos vacíos", solo pintamos de rojo los que REALMENTE están vacíos
-    if (errorType === 'EMPTY_FIELDS') {
-      if (fieldName && !formData[fieldName]) {
-        return "bg-error-bg-red border-error-red";
-      }
-      // Si el campo tiene datos, no debe ponerse rojo aunque el error sea EMPTY_FIELDS
-      return "bg-transparent border-defaultBorder-gray";
-    }
-
-    // Para los demás errores específicos (dominio, nombre, contraseñas)
-    const isError = fields.includes(errorType);
-    return isError 
-      ? "bg-error-bg-red border-error-red" 
-      : "bg-transparent border-defaultBorder-gray";
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // Función de estilos optimizada
+  const getInputStyles = (errorKeys, fieldName = null) => {
+    const hasError = errorKeys.includes(errorType) || (errorType === 'EMPTY_FIELDS' && fieldName && !formData[fieldName]);
+    return hasError 
+      ? "bg-red-50 border-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.5)]" 
+      : "bg-transparent border-gray-200 focus-within:border-sabana-blue";
   };
 
   return (
-    <main className="min-h-screen w-full relative font-['Roboto'] overflow-hidden">
+    <main className="min-h-screen w-full relative font-sans overflow-hidden bg-sabana-light">
       {/* Fondo dividido */}
       <div className="absolute inset-0 z-0">
         <div className="h-1/2 w-full bg-sabana-blue"></div>
-        <div className="h-1/2 w-full bg-sabana-light"></div>
       </div>
 
-      {/* Contenido Principal */}
-      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-8">
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
         
-        {/* Header con Iconos */}
-        <header className="w-full max-w-xl flex justify-between items-start mb-6">
+        {/* Header */}
+        <header className="w-full max-w-xl flex justify-between items-start mb-8">
           <button 
             onClick={() => navigate('/login')} 
-            className="text-white text-xl mt-2 hover:opacity-70 transition-opacity"
+            className="text-white text-xl p-2 hover:bg-white/10 rounded-full transition-all"
           >
             <FaArrowLeft />
           </button>
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-white font-['Roboto_Slab'] mb-1">Regístrate</h1>
-              <p className={`text-sm max-w-[280px] mx-auto leading-tight font-medium ${errorType ? 'text-sabana-softGold' : 'text-sabana-blue-light'}`}>
-                {!errorType && "¡Hola! crea una cuenta con tu correo de la U para disfrutar de nuestros servicios."}
-                {errorType === 'EMPTY_FIELDS' && "¡Ups! parece que hay algún dato sin registrar, por favor verifica y vuelve a intentarlo."}
-                {errorType === 'DOMAIN_ERROR' && "¡Ups! parece que algo salió mal, por favor verifica que el correo tenga dominio de la Universidad de la Sabana."}
-                {errorType === 'NAME_ERROR' && "¡Ups! parece que algo salió mal, por favor verifica que el nombre y/o apellido sea válido y vuelve a intentarlo."}
-                {errorType === 'PASS_LENGTH_ERROR' && "¡Ups! parece que algo salió mal, recuerda que la contraseña debe tener mínimo seis dígitos."}
-                {errorType === 'PASS_MATCH_ERROR' && "¡Ups! parece que algo salió mal, por favor verifica que la contraseña sea la misma en ambos campos y vuelve a intentarlo."}
-              </p>
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Regístrate</h1>
+            <p className={`text-sm max-w-[300px] mx-auto leading-snug font-medium transition-colors duration-300 ${errorType ? 'text-sabana-softGold' : 'text-blue-100'}`}>
+              {errorMessages[errorType] || errorMessages.DEFAULT}
+            </p>
           </div>
-          {/* LOGO CORREGIDO */}
-          <img 
-            src={smallLogo} 
-            alt="Logo Sabana" 
-            className="h-12 w-auto object-contain" 
-          />
+          <img src={smallLogo} alt="Logo Sabana" className="h-12 w-auto object-contain" />
         </header>
 
-        {/* ESTA ES LA CÁPSULA BLANCA PRINCIPAL QUE FALTABA */}
-        <div className="w-full max-w-xl bg-white rounded-[32px] shadow-2xl p-8 border border-defaultBorder-gray">
-          <form onSubmit={handleSubmit} className="space-y-4">  
+        {/* Form Container */}
+        <div className="w-full max-w-xl bg-white rounded-[40px] shadow-2xl p-10 border border-gray-100">
+          <form onSubmit={handleSubmit} className="space-y-5">
             
-            {/* Fila: Nombre y Apellido */}
             <div className="flex gap-4">
-              <div className={`flex-1 rounded-2xl border-2 px-5 py-3 transition-all ${getInputStyles(['NAME_ERROR'], 'name')}`}>  
-                <label className="block text-gray-400 text-[10px] uppercase font-bold mb-1">Nombre</label>
-                <input 
-                  name="name"
-                  type="text" 
-                  className="w-full bg-transparent text-default-black font-medium outline-none"
-                  onChange={handleChange}
-                />
+              <div className={`flex-1 rounded-2xl border-2 px-5 py-3 transition-all ${getInputStyles(['NAME_ERROR'], 'name')}`}>
+                <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Nombre</label>
+                <input name="name" type="text" className="w-full bg-transparent text-gray-800 font-semibold outline-none" onChange={handleChange} value={formData.name} />
               </div>
               <div className={`flex-1 rounded-2xl border-2 px-5 py-3 transition-all ${getInputStyles(['NAME_ERROR'], 'lastName')}`}>
-                <label className="block text-gray-400 text-[10px] uppercase font-bold mb-1">Apellido</label>
-                <input 
-                  name="lastName"
-                  type="text" 
-                  className="w-full bg-transparent text-default-black font-medium outline-none"
-                  onChange={handleChange}
-                />
+                <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Apellido</label>
+                <input name="lastName" type="text" className="w-full bg-transparent text-gray-800 font-semibold outline-none" onChange={handleChange} value={formData.lastName} />
               </div>
             </div>
 
-            {/* Input: Correo */}
             <div className={`rounded-2xl border-2 px-5 py-4 transition-all ${getInputStyles(['DOMAIN_ERROR'], 'email')}`}>
-              <input 
-                name="email"
-                type="email" 
-                placeholder="usuario@unisabana.edu.co"
-                className="w-full bg-transparent text-default-black font-medium outline-none placeholder:text-gray-400"
-                onChange={handleChange}
-              />
+              <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Correo Institucional</label>
+              <input name="email" type="email" placeholder="usuario@unisabana.edu.co" className="w-full bg-transparent text-gray-800 font-semibold outline-none placeholder:text-gray-300" onChange={handleChange} value={formData.email} />
             </div>
 
-            {/* Input: Contraseña */}
             <div className={`rounded-2xl border-2 px-5 py-4 flex justify-between items-center transition-all ${getInputStyles(['PASS_LENGTH_ERROR', 'PASS_MATCH_ERROR'], 'password')}`}>
-              <input 
-                name="password"
-                type={showPass ? "text" : "password"} 
-                placeholder="contraseña"
-                className="w-full bg-transparent text-default-black font-medium outline-none placeholder:text-gray-400"
-                onChange={handleChange}
-              />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="text-gray-400">
-                {showPass ? <FaEyeSlash /> : <FaEye />}
+              <div className="flex-1">
+                <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Contraseña</label>
+                <input name="password" type={showPass ? "text" : "password"} placeholder="••••••••" className="w-full bg-transparent text-gray-800 font-semibold outline-none placeholder:text-gray-300" onChange={handleChange} value={formData.password} />
+              </div>
+              <button type="button" onClick={() => setShowPass(!showPass)} className="text-gray-400 hover:text-sabana-blue transition-colors">
+                {showPass ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
               </button>
             </div>
 
-            {/* Input: Confirmar Contraseña */}
             <div className={`rounded-2xl border-2 px-5 py-4 flex justify-between items-center transition-all ${getInputStyles(['PASS_MATCH_ERROR'], 'confirmPassword')}`}>
-              <input 
-                name="confirmPassword"
-                type={showPass ? "text" : "password"} 
-                placeholder="confirmar contraseña"
-                className="w-full bg-transparent text-default-black font-medium outline-none placeholder:text-gray-400"
-                onChange={handleChange}
-              />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="text-gray-400">
-                {showPass ? <FaEyeSlash /> : <FaEye />}
-              </button>
+              <div className="flex-1">
+                <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Confirmar Contraseña</label>
+                <input name="confirmPassword" type={showPass ? "text" : "password"} placeholder="••••••••" className="w-full bg-transparent text-gray-800 font-semibold outline-none placeholder:text-gray-300" onChange={handleChange} value={formData.confirmPassword} />
+              </div>
             </div>
 
-            {/* Seleccionador de Carrera */}
             <div className={`rounded-2xl border-2 px-5 py-4 transition-all ${getInputStyles(['EMPTY_FIELDS'], 'career')}`}>
-              <select 
-                name="career"
-                className="w-full bg-transparent text-default-black font-medium outline-none appearance-none"
-                onChange={handleChange}
-                defaultValue=""
-              >
+              <label className="block text-gray-400 text-[10px] uppercase font-black mb-1">Carrera</label>
+              <select name="career" className="w-full bg-transparent text-gray-800 font-semibold outline-none appearance-none cursor-pointer" onChange={handleChange} value={formData.career}>
                 <option value="" disabled>Selecciona tu carrera</option>
-                <option value="" disabled>Escuela Internacional de Ciencias Económicas y Administrativas:</option>
-                <option value="Business Administration">Administración de Empresas</option>
-                <option value="Administration & Service">Administración & Servicio</option>
-                <option value="Marketing and International Logistics Administration">Administración de Mercadeo y Logística Internacionales</option>
-                <option value="International Business Administration">Administración de Negocios Internacionales</option>
-                <option value="International Economics and Finance">Economía y Finanzas Internacionales</option>
-                <option value="International Economics and Finance (Online)">Economía y Finanzas Internacionales Virtual</option>
-                <option value="Gastronomy">Gastronomía</option>
-                <option value="" disabled>Facultad de Ciencias del Comportamiento:</option>
-                <option value="Organizational Behavior">Comportamiento Organizacional</option>
-                <option value="Psychology">Psicología</option>
-                <option value="" disabled>Facultad de Comunicación:</option>
-                <option value="Audiovisual and Multimedia Communication">Comunicación Audiovisual y Multimedios</option>
-                <option value="Corporate Communication">Comunicación Corporativa</option>
-                <option value="Social Communication and Journalism">Comunicación Social y Periodismo</option>
-                <option value="" disabled>Facultad de Educación:</option>
-                <option value="Early Childhood Education Teaching Degree">Licenciatura en Educación Infantil</option>
-                <option value="Unisabana College">Unisabana College</option>
-                <option value="" disabled>Facultad de Ciencias de la Vida y el Bienestar:</option>
-                <option value="Nursing">Enfermería</option>
-                <option value="Physiotherapy">Fisioterapia</option>
-                <option value="" disabled>Facultad de Estudios Jurídicos, Políticos e Internacionales:</option>
-                <option value="Political Science">Ciencias Políticas</option>
-                <option value="Law">Derecho</option>
-                <option value="International Relations">Relaciones Internacionales</option>
-                <option value="" disabled>Facultad de Filosofía y Ciencias Humanas:</option>
-                <option value="Philosophy">Filosofía</option>
-                <option value="" disabled>Facultad de Ingeniería:</option>
-                <option value="Data Science">Ciencia de Datos</option>
-                <option value="Bioproduction Engineering">Ingeniería de Bioproducción</option>
-                <option value="Design and Innovation Engineering">Ingeniería de Diseño e Innovación</option>
-                <option value="Mechanical Engineering">Ingeniería Mecánica</option>
-                <option value="Chemical Engineering">Ingeniería Química</option>
-                <option value="Computer Engineering">Ingeniería Informática</option>
-                <option value="Industrial Engineering">Ingeniería Industrial</option>
-                <option value="Civil Engineering">Ingeniería Civil</option>
-                <option value="" disabled>Facultad de Medicina:</option>
-                <option value="Medicine">Medicina</option>
-                
+                <optgroup label="Ingeniería">
+                  <option value="Civil Engineering">Ingeniería Civil</option>
+                  <option value="Computer Engineering">Ingeniería Informática</option>
+                  <option value="Industrial Engineering">Ingeniería Industrial</option>
+                  <option value="Mechanical Engineering">Ingeniería Mecánica</option>
+                  <option value="Chemical Engineering">Ingeniería Química</option>
+                </optgroup>
+                <optgroup label="EICEA">
+                  <option value="Business Administration">Administración de Empresas</option>
+                  <option value="Gastronomy">Gastronomía</option>
+                  <option value="International Economics">Economía y Finanzas</option>
+                </optgroup>
+                {/* Agrega más según necesites */}
               </select>
             </div>
 
-            {/* Botón Registrarme */}
-            <div className="pt-4">
-              <button 
-                type="submit"
-                className="w-full bg-sabana-blue text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-sabana-blue-hover transition-all uppercase tracking-widest text-sm"
-              >
-                Registrarme
-              </button>
-            </div>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className={`w-full ${loading ? 'bg-gray-400' : 'bg-sabana-blue hover:bg-sabana-blue-hover'} text-white font-black py-5 rounded-[20px] shadow-xl transition-all uppercase tracking-[0.2em] text-xs active:scale-95`}
+            >
+              {loading ? 'Procesando...' : 'Crear Cuenta'}
+            </button>
           </form>
         </div>
 
-        <p className="mt-6 text-sm text-sabana-blue font-medium">
+        <p className="mt-8 text-sm text-sabana-blue font-medium">
           ¿Ya tienes una cuenta?{' '}
-          <span 
-            onClick={() => navigate('/login')} 
-            className="font-bold underline cursor-pointer"
-          >
+          <span onClick={() => navigate('/login')} className="font-black underline cursor-pointer hover:text-sabana-blue-hover transition-colors">
             Inicia sesión
           </span>
         </p>

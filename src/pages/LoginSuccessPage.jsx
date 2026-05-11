@@ -5,15 +5,18 @@ import logoPequeno from '../assets/sabanalogo.png';
 
 const LoginSuccessPage = () => {
   const navigate = useNavigate();
-  localStorage.setItem('isLoggedIn', 'true');
 
   useEffect(() => {
+    // Aseguramos la sesión al montar el componente
+    localStorage.setItem('isLoggedIn', 'true');
+
+    // Redirección un poco más rápida para mejorar el UX
     const timer = setTimeout(() => {
-      navigate('/home'); // ruta principal que decida
-    }, 5500);
+      navigate('/home'); 
+    }, 3500); 
+
     return () => clearTimeout(timer);
   }, [navigate]);
-
 
   return (
     <main className="h-screen w-full flex flex-col font-['Roboto'] overflow-hidden">
@@ -26,26 +29,29 @@ const LoginSuccessPage = () => {
           className="absolute top-6 right-6 h-10 md:h-12 object-contain"
         />
         
-        <h1 className="text-white text-4xl md:text-6xl font-bold font-['Roboto_Slab'] text-center mb-2">
-          Ingresaste a tu cuenta
-        </h1>
-        <p className="text-white text-lg md:text-xl opacity-90 text-center">
-          ¡Genial! ahora puedes disfrutar de nuestros servicios.
-        </p>
+        <div className="animate-in fade-in zoom-in duration-700 text-center">
+          <h1 className="text-white text-4xl md:text-6xl font-bold font-['Roboto_Slab'] mb-2">
+            ¡Ingreso exitoso!
+          </h1>
+          <p className="text-white text-lg md:text-xl opacity-90">
+            Ahora puedes disfrutar de todos nuestros servicios.
+          </p>
+        </div>
       </div>
 
       {/* PARTE INFERIOR (CELESTE) */}
       <div className="h-[55%] w-full bg-sabana-light flex justify-center px-4 relative">
         
-        <div className="absolute -top-24 bg-white p-8 md:p-12 rounded-[32px] shadow-2xl w-[90%] max-w-2xl flex flex-col items-center border border-defaultBorder-gray z-20">
+        {/* Tarjeta con una animación suave de subida */}
+        <div className="absolute -top-24 bg-white p-8 md:p-12 rounded-[32px] shadow-2xl w-[90%] max-w-2xl flex flex-col items-center border border-defaultBorder-gray z-20 transition-all duration-500 transform hover:scale-[1.01]">
           
-          {/* Línea de Bienvenido (Vuelve porque es un ingreso exitoso) */}
+          {/* Línea de Bienvenido */}
           <div className="w-full flex items-center justify-center gap-4 mb-8">
-            <div className="h-[1px] bg-gray-200 w-full"></div>
+            <div className="h-[1px] bg-gray-100 w-full"></div>
             <span className="text-gray-400 text-[10px] md:text-xs uppercase tracking-widest font-bold whitespace-nowrap">
-              Bienvenido
+              Bienvenido a la comunidad
             </span>
-            <div className="h-[1px] bg-gray-200 w-full"></div>
+            <div className="h-[1px] bg-gray-100 w-full"></div>
           </div>
 
           <div className="w-full py-4 flex justify-center">
@@ -55,8 +61,14 @@ const LoginSuccessPage = () => {
               className="w-full max-w-md h-auto object-contain"
             />
           </div>
-        </div>
 
+          {/* Indicador de carga sutil */}
+          <div className="mt-6 flex gap-2">
+            <div className="w-2 h-2 bg-sabana-blue rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-2 h-2 bg-sabana-blue rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-2 h-2 bg-sabana-blue rounded-full animate-bounce"></div>
+          </div>
+        </div>
       </div>
     </main>
   );

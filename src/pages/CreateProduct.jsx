@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { IoChevronBack } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 import smallLogo from '../assets/sabanalogo.png';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
 const CATEGORIES = [
   { value: 'ACADEMIC_SUPPLIES', label: 'Útiles académicos' },
@@ -46,7 +47,7 @@ const CreateProduct = () => {
     const newErrors = {};
     const MAX_PRICE = 1_000_000_000_000;
     const numericStock = Number(formData.stock);
-    if (formData.stock === '' || Number.isNaN(numericStock) || numericStock < 0) {
+    if (formData.stock === '' || Number.isNaN(numericStock) || numericStock < 1) {
       newErrors.stock = 'El stock no puede ser negativo';
     }
 
@@ -86,6 +87,7 @@ const CreateProduct = () => {
   };
 
   const handleSubmit = async (e) => {
+    
     e.preventDefault();
     setError('');
     
@@ -115,12 +117,11 @@ const CreateProduct = () => {
         ownerEmail: loggedUserEmail, // <--- El correo dinámico
       };
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_BASE_URL}/api/v1/products`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+      const response = await fetch(`${API_BASE_URL}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
       if (response.ok) {
         alert('¡Producto publicado con éxito!');
@@ -222,7 +223,7 @@ const CreateProduct = () => {
               {fieldErrors.price && <p className="mt-1.5 ml-1 text-xs text-error-red font-medium">{fieldErrors.price}</p>}
             </div>
 
-            {/* STOCK - ¡El nuevo integrante! */}
+            {/* STOCK */}
             <div>
               <label className="block text-[11px] font-bold text-sabana-blue uppercase tracking-wider mb-1.5 ml-1">
                 Cantidad (Stock)
