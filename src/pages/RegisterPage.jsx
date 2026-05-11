@@ -162,18 +162,53 @@ const RegisterPage = () => {
               <select name="career" className="w-full bg-transparent text-gray-800 font-semibold outline-none appearance-none cursor-pointer" onChange={handleChange} value={formData.career}>
                 <option value="" disabled>Selecciona tu carrera</option>
                 <optgroup label="Ingeniería">
-                  <option value="Civil Engineering">Ingeniería Civil</option>
-                  <option value="Computer Engineering">Ingeniería Informática</option>
-                  <option value="Industrial Engineering">Ingeniería Industrial</option>
+                  <option value="Data Science">Ciencia de Datos</option>
+                  <option value="Bioproduction Engineering">Ingeniería de Bioproducción</option>
+                  <option value="Design and Innovation Engineering">Ingeniería de Diseño e Innovación</option>
                   <option value="Mechanical Engineering">Ingeniería Mecánica</option>
                   <option value="Chemical Engineering">Ingeniería Química</option>
+                  <option value="Computer Engineering">Ingeniería Informática</option>
+                  <option value="Industrial Engineering">Ingeniería Industrial</option>
+                  <option value="Civil Engineering">Ingeniería Civil</option>
                 </optgroup>
                 <optgroup label="EICEA">
                   <option value="Business Administration">Administración de Empresas</option>
                   <option value="Gastronomy">Gastronomía</option>
                   <option value="International Economics">Economía y Finanzas</option>
                 </optgroup>
-                {/* Agrega más según necesites */}
+                <optgroup label = "Gatronomía">
+                  <option value="Gastronomy">Gastronomía</option>
+                </optgroup>
+                <optgroup label = "Facultad de Ciencias del Comportamiento">
+                  <option value="" disabled>Facultad de Ciencias del Comportamiento:</option>
+                  <option value="Organizational Behavior">Comportamiento Organizacional</option>
+                  <option value="Psychology">Psicología</option>
+                </optgroup>
+                <optgroup label="Facultad de Comunicación">
+                <option value="" disabled>Facultad de Comunicación:</option>
+                  <option value="Audiovisual and Multimedia Communication">Comunicación Audiovisual y Multimedios</option>
+                  <option value="Corporate Communication">Comunicación Corporativa</option>
+                  <option value="Social Communication and Journalism">Comunicación Social y Periodismo</option>
+                </optgroup>
+                <optgroup label = "Facultad de Educación">
+                  <option value="Early Childhood Education Teaching Degree">Licenciatura en Educación Infantil</option>
+                  <option value="Unisabana College">Unisabana College</option>
+                </optgroup>
+                <optgroup label = "Facultad de Ciencias de la Vida y el Bienestar">
+                  <option value="Nursing">Enfermería</option>
+                  <option value="Physiotherapy">Fisioterapia</option>
+                </optgroup>
+                <optgroup label = "Facultad de Estudios Jurídicos, Políticos e Internacionales">
+                  <option value="Political Science">Ciencias Políticas</option>
+                  <option value="Law">Derecho</option>
+                  <option value="International Relations">Relaciones Internacionales</option>
+                </optgroup>
+                <optgroup label = "Facultad de Filosofía y Ciencias Humanas">
+                  <option value="Philosophy">Filosofía</option>
+                </optgroup>
+                <optgroup label="Facultad de Medicina">
+                  <option value="Medicine">Medicina</option>
+                </optgroup>
               </select>
             </div>
 
