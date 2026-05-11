@@ -25,7 +25,7 @@ const LoginPage = () => {
       return; // No seguimos si el formato está mal
     }
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const API_BASE_URL = import.meta.env.VITE_API_URL;
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
