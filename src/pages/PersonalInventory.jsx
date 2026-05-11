@@ -6,11 +6,13 @@ import smallLogo from '../assets/sabanalogo.png';
 import completeLogo from '../assets/unisabanalogocomplete.png';
 
 
+
 const PersonalInventory = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState(null);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   const handleUpdateProduct = (updatedProduct) => {
     setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
@@ -25,8 +27,8 @@ const PersonalInventory = () => {
       }
 
       // Asegúrate de que el endpoint coincida con tu @GetMapping del backend
-      const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${VITE_API_URL}/products/owner/${userEmail}`);
+      
+      const response = await fetch(`${apiUrl}/api/v1/products/owner/${userEmail}`);
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -45,8 +47,8 @@ const PersonalInventory = () => {
   const handleDelete = async (id) => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer.")) {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${VITE_API_URL}/api/v1/products/${id}`, {
+        
+        const response = await fetch(`${apiUrl}/api/v1/products/${id}`, {
           method: 'DELETE',
         });
 
@@ -106,8 +108,8 @@ const PersonalInventory = () => {
 
       setIsSaving(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${API_BASE_URL}/api/v1/products/${product.id}`, {
+        
+        const response = await fetch(`${apiUrl}/api/v1/products/${product.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),

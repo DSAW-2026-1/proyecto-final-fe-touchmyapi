@@ -14,6 +14,7 @@ const LoginPage = () => {
   const [showPass, setShowPass] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,8 +34,8 @@ const LoginPage = () => {
 
     try {
       // Ajustamos la ruta para que coincida con tu backend desplegado
-      const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${VITE_API_URL}/api/v1/auth/login`, {
+      
+      const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

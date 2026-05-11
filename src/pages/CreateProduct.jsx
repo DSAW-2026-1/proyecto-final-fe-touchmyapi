@@ -15,6 +15,7 @@ const CATEGORIES = [
 
 const CreateProduct = () => {
   const navigate = useNavigate();
+  const apiUrl = import.meta.env.VITE_API_URL;
   const [formData, setFormData] = useState({
     title: '',
     price: '',
@@ -116,8 +117,8 @@ const CreateProduct = () => {
         ownerEmail: loggedUserEmail, // <--- El correo dinámico
       };
 
-      const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${VITE_API_URL}/api/v1/products`, {
+      
+      const response = await fetch(`${apiUrl}/api/v1/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

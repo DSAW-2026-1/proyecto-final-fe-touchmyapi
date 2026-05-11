@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, User, ShoppingCart, Phone, Mail, ArrowRight, ExternalLink, X, LogOut } from 'lucide-react';
+import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
@@ -11,6 +11,7 @@ const PublicShowcase = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   const CATEGORY_LABELS = {
     'ACADEMIC_SUPPLIES': 'Útiles académicos',
@@ -28,8 +29,8 @@ const PublicShowcase = () => {
     const fetchAllProducts = async () => {
       try {
         // En despliegue, esta URL sea una variable de entorno
-        const apiUrl = import.meta.env.VITE_API_URL;
-        const response = await fetch(`${VITE_API_URL}/api/v1/products`);
+        
+        const response = await fetch(`${apiUrl}/api/v1/products`);
         
         if (!response.ok) throw new Error('Error en la red');
         const dbProducts = await response.json();
