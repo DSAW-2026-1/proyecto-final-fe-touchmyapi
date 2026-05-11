@@ -130,11 +130,12 @@ const PersonalInventory = () => {
       return (
         formData.title !== product.title ||
         Number(formData.price) !== Number(product.price) ||
-        formData.category !== product.category ||
         Number(formData.stock) !== Number(product.stock) ||
+        formData.category !== product.category ||
         formData.description !== product.description ||
-        formData.condition !== product.condition ||
-        formData.imageUrl !== product.imageUrl
+        formData.imageUrl !== product.imageUrl ||
+        formData.condition !== product.condition 
+        
       );
     };
   
@@ -145,7 +146,7 @@ const PersonalInventory = () => {
       if (!validateForm()) return;
   
       if (!hasChanges()) {
-        setHostMessage('Host: No hay cambios nuevos para sincronizar.');
+        setHostMessage('No hay cambios nuevos para sincronizar.');
         setTimeout(() => setHostMessage(''), 3000);
         return;
       }
@@ -154,14 +155,16 @@ const PersonalInventory = () => {
       try {
         const payload = {
           ...formData,
+          title: formData.title.trim(),
           price: Number(formData.price),
           stock: Number(formData.stock),
-          title: formData.title.trim(),
+          category: formData.category.trim(),
           description: formData.description.trim(),
-          imageUrl: (formData.imageUrl || '').trim()
+          imageUrl: (formData.imageUrl || '').trim(),
+          condition: formData.condition.trim()
         };
   
-        const response = await fetch(`http://localhost:8080/api/v1/products/${product.id}`, {
+        const response = await fetch(`${apiUrl}/api/v1/products/${product.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -171,7 +174,7 @@ const PersonalInventory = () => {
           const updatedProduct = await response.json();
           onUpdate(updatedProduct); 
           onClose();
-          alert("¡Producto actualizado correctamente!");
+          alert("Producto actualizado correctamente.");
         }
       } catch (error) {
         alert("Error al conectar con el backend.");
@@ -195,7 +198,7 @@ const PersonalInventory = () => {
           {hostMessage && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] z-[110]">
               <p className="bg-sabana-softGold text-sabana-blue text-xs font-black p-3 rounded-2xl text-center shadow-lg border border-sabana-blue/10">
-                ⚠️ {hostMessage}
+                {hostMessage}
               </p>
             </div>
           )}
@@ -210,7 +213,7 @@ const PersonalInventory = () => {
                 {fieldErrors.title && <p className="mt-1 ml-1 text-[10px] text-error-red font-bold uppercase">{fieldErrors.title}</p>}
               </div>
   
-              {/* --- NUEVO CAMPO DE IMAGEN --- */}
+              {/* CAMPO DE IMAGEN */}
               <div>
                 <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">URL de Imagen (Opcional)</label>
                 <input 
