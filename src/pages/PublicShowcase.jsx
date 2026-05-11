@@ -23,12 +23,12 @@ const PublicShowcase = () => {
     'OTHER': 'Otros',
   };
 
-  // 1. Fetch de productos con manejo de errores robusto para producción
+  // 1. Fetch de productos con manejo de errores
   useEffect(() => {
     let isMounted = true;
     const fetchAllProducts = async () => {
       try {
-        // En despliegue, esta URL sea una variable de entorno
+        
         
         const response = await fetch(`${apiUrl}/api/v1/products`);
         
@@ -90,7 +90,7 @@ const PublicShowcase = () => {
     const totalStock = products.reduce((acc, prod) => acc + (prod.stock || 0), 0);
     const averageStock = totalStock / products.length;
     return products
-      .filter(product => (product.stock || 0) > averageStock)
+      .filter(product => (product.stock || 0) < averageStock)
       .sort((a, b) => (b.stock || 0) - (a.stock || 0))
       .slice(0, 4);
   }, [products]);
@@ -261,13 +261,19 @@ const PublicShowcase = () => {
                       onError={(e) => { e.target.src = logoSabana; }}
                     />
                     <div className="absolute top-3 right-3 bg-sabana-softGold text-sabana-blue text-[10px] font-black px-2 py-1 rounded-lg shadow-sm">
-                      TENDENCIA: {product.stock} DISPONIBLES
+                      TENDENCIA
                     </div>
                   </div>
                   <div className="px-2">
-                    <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
-                      {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-                    </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                        {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase transition-all ${
+                        product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'}`}>
+                        {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
+                      </span>
+                    </div> 
                     <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
                     <div className="flex items-center justify-between mt-4">
                       <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
