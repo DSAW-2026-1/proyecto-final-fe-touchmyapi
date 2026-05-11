@@ -77,104 +77,194 @@ const PersonalInventory = () => {
   // SUB-COMPONENTE: MODAL DE EDICIÓN
   const EditModal = ({ product, onClose, onUpdate }) => {
     const [formData, setFormData] = useState({ ...product });
-    const [isSaving, setIsSaving] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
     const [hostMessage, setHostMessage] = useState('');
-
+  
     if (!product) return null;
-
+  
     const validateForm = () => {
       const newErrors = {};
-      if (!formData.title?.trim()) newErrors.title = 'El nombre es obligatorio';
-      if (!formData.category) newErrors.category = 'Selecciona una categoría';
+      const MAX_PRICE = 1_000_000_000_000;
       
+      // Validaciones de texto y selección
+      if (!formData.title.trim()) newErrors.title = 'El nombre es obligatorio';
+      if (!formData.category) newErrors.category = 'Selecciona una categoría';
+      if (!formData.condition) newErrors.condition = 'Selecciona el estado';
+  
+      // Validación de Precio
       const numericPrice = Number(formData.price);
-      if (isNaN(numericPrice) || numericPrice <= 0) newErrors.price = 'Precio inválido';
-
-      const numericStock = Number(formData.stock);
-      if (isNaN(numericStock) || numericStock < 1) newErrors.stock = 'Mínimo 1 unidad';
-
-      if (!formData.description?.trim() || formData.description.length < 3) {
-        newErrors.description = 'Descripción demasiado corta';
+      if (formData.price === '' || Number.isNaN(numericPrice) || numericPrice <= 0 || numericPrice > MAX_PRICE) {
+        newErrors.price = 'Indica un precio válido';
       }
-
+  
+      // Validación de Stock (Mínimo 1)
+      const numericStock = Number(formData.stock);
+      if (formData.stock === '' || Number.isNaN(numericStock) || numericStock < 1) {
+        newErrors.stock = 'El stock debe ser al menos 1';
+      }
+  
+      // Validación de Descripción
+      if (!formData.description.trim() || formData.description.trim().length < 3) {
+        newErrors.description = 'La descripción es muy corta';
+      }
+  
+      // --- NUEVA VALIDACIÓN DE IMAGEN (URL) ---
+      const urlTrim = (formData.imageUrl || '').trim();
+      if (urlTrim) {
+        try {
+          const u = new URL(urlTrim);
+          if (!['http:', 'https:'].includes(u.protocol)) {
+            newErrors.imageUrl = 'La URL debe iniciar con http o https';
+          }
+        } catch {
+          newErrors.imageUrl = 'Introduce una URL de imagen válida';
+        }
+      }
+  
       setFieldErrors(newErrors);
       return Object.keys(newErrors).length === 0;
     };
-
+  
+    const hasChanges = () => {
+      return (
+        formData.title !== product.title ||
+        Number(formData.price) !== Number(product.price) ||
+        formData.category !== product.category ||
+        Number(formData.stock) !== Number(product.stock) ||
+        formData.description !== product.description ||
+        formData.condition !== product.condition ||
+        formData.imageUrl !== product.imageUrl
+      );
+    };
+  
     const handleSubmit = async (e) => {
       e.preventDefault();
+      setHostMessage('');
+  
       if (!validateForm()) return;
-
-      setIsSaving(true);
+  
+      if (!hasChanges()) {
+        setHostMessage('Host: No hay cambios nuevos para sincronizar.');
+        setTimeout(() => setHostMessage(''), 3000);
+        return;
+      }
+  
+      setLoading(true);
       try {
-        
-        const response = await fetch(`${apiUrl}/api/v1/products/${product.id}`, {
+        const payload = {
+          ...formData,
+          price: Number(formData.price),
+          stock: Number(formData.stock),
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          imageUrl: (formData.imageUrl || '').trim()
+        };
+  
+        const response = await fetch(`http://localhost:8080/api/v1/products/${product.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
-
+  
         if (response.ok) {
-          const updated = await response.json();
-          onUpdate(updated);
+          const updatedProduct = await response.json();
+          onUpdate(updatedProduct); 
           onClose();
-        } else {
-          alert("Error al actualizar en el servidor.");
+          alert("¡Producto actualizado correctamente!");
         }
       } catch (error) {
-        alert("Error de conexión con el backend.");
+        alert("Error al conectar con el backend.");
       } finally {
-        setIsSaving(false);
+        setLoading(false);
       }
     };
-
+  
+    const getInputClass = (fieldName) => `
+      w-full px-4 py-3 rounded-xl border-2 transition-all outline-none font-medium
+      ${fieldErrors[fieldName] 
+        ? 'border-error-red bg-error-bg-red focus:border-error-red' 
+        : 'border-defaultBorder-gray bg-default-white focus:border-sabana-softGold'}
+    `;
+  
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
         <div className="absolute inset-0 bg-sabana-blue/60 backdrop-blur-sm" onClick={onClose}></div>
-        <form onSubmit={handleSubmit} className="relative bg-default-white w-full max-w-2xl rounded-[32px] p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-          <h2 className="text-2xl font-black text-sabana-blue mb-6 border-b pb-4">Editar Producto</h2>
+        
+        <form onSubmit={handleSubmit} className="relative bg-default-white w-full max-w-2xl rounded-[32px] p-8 shadow-2xl my-8">
+          {hostMessage && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] z-[110]">
+              <p className="bg-sabana-softGold text-sabana-blue text-xs font-black p-3 rounded-2xl text-center shadow-lg border border-sabana-blue/10">
+                ⚠️ {hostMessage}
+              </p>
+            </div>
+          )}
+  
+          <h2 className="text-2xl font-black text-sabana-blue mb-6 border-b pb-4">Editar Detalles</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-4">
-              <label className="block text-[11px] font-bold text-sabana-blue uppercase">Nombre del producto</label>
-              <input 
-                className={`w-full px-4 py-3 rounded-xl border-2 outline-none ${fieldErrors.title ? 'border-error-red' : 'border-gray-100'}`} 
-                value={formData.title} 
-                onChange={(e) => setFormData({...formData, title: e.target.value})} 
-              />
-              
-              <label className="block text-[11px] font-bold text-sabana-blue uppercase">URL Imagen</label>
-              <input 
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 outline-none" 
-                value={formData.imageUrl || ''} 
-                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} 
-              />
+              <div>
+                <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">Nombre</label>
+                <input className={getInputClass('title')} value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} />
+                {fieldErrors.title && <p className="mt-1 ml-1 text-[10px] text-error-red font-bold uppercase">{fieldErrors.title}</p>}
+              </div>
+  
+              {/* --- NUEVO CAMPO DE IMAGEN --- */}
+              <div>
+                <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">URL de Imagen (Opcional)</label>
+                <input 
+                  type="url" 
+                  placeholder="https://ejemplo.com/foto.jpg"
+                  className={getInputClass('imageUrl')} 
+                  value={formData.imageUrl || ''} 
+                  onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} 
+                />
+                {fieldErrors.imageUrl && <p className="mt-1 ml-1 text-[10px] text-error-red font-bold uppercase">{fieldErrors.imageUrl}</p>}
+              </div>
+  
+              <div>
+                <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">Categoría</label>
+                <select className={getInputClass('category')} value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
             </div>
-
+  
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-sabana-blue uppercase">Precio</label>
-                  <input type="number" className="w-full px-4 py-3 rounded-xl border-2 border-gray-100" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
+                  <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">Precio</label>
+                  <input type="number" className={getInputClass('price')} value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
+                  {fieldErrors.price && <p className="mt-1 ml-1 text-[10px] text-error-red font-bold uppercase">{fieldErrors.price}</p>}
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-sabana-blue uppercase">Stock</label>
-                  <input type="number" className="w-full px-4 py-3 rounded-xl border-2 border-gray-100" value={formData.stock} onChange={(e) => setFormData({...formData, stock: e.target.value})} />
+                  <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">Stock</label>
+                  <input type="number" className={getInputClass('stock')} value={formData.stock} onChange={(e) => setFormData({...formData, stock: e.target.value})} />
+                  {fieldErrors.stock && <p className="mt-1 ml-1 text-[10px] text-error-red font-bold uppercase">{fieldErrors.stock}</p>}
                 </div>
               </div>
-
-              <label className="block text-[11px] font-bold text-sabana-blue uppercase">Categoría</label>
-              <select className="w-full px-4 py-3 rounded-xl border-2 border-gray-100" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
-                {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+  
+              <div>
+                <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">Estado</label>
+                <select className={getInputClass('condition')} value={formData.condition} onChange={(e) => setFormData({...formData, condition: e.target.value})}>
+                  <option value="NEW">Nuevo</option>
+                  <option value="USED">Usado</option>
+                </select>
+              </div>
+  
+              <div>
+                <label className="block text-[11px] font-bold text-sabana-blue uppercase ml-1 mb-1">Descripción</label>
+                <textarea rows="3" className={`${getInputClass('description')} resize-none`} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
+                {fieldErrors.description && <p className="mt-1 ml-1 text-[10px] text-error-red font-bold uppercase">{fieldErrors.description}</p>}
+              </div>
             </div>
           </div>
-
+  
           <div className="flex gap-4 mt-8">
-            <button type="button" onClick={onClose} className="flex-1 py-4 text-gray-500 font-bold uppercase hover:bg-gray-50 rounded-xl transition-all">Cancelar</button>
-            <button type="submit" disabled={isSaving} className="flex-1 py-4 bg-sabana-blue text-white rounded-xl font-bold uppercase shadow-lg hover:bg-sabana-blue-hover disabled:opacity-50">
-              {isSaving ? 'Guardando...' : 'Actualizar'}
+            <button type="button" onClick={onClose} className="flex-1 py-4 text-default-gray font-black uppercase tracking-widest hover:bg-sabana-light rounded-xl transition-all">Descartar</button>
+            <button type="submit" disabled={loading} className={`flex-1 py-4 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all ${!hasChanges() ? 'bg-gray-200 text-gray-400' : 'bg-sabana-blue text-white hover:bg-sabana-blue-hover'}`}>
+              {loading ? 'Sincronizando...' : 'Guardar'}
             </button>
           </div>
         </form>
@@ -227,21 +317,27 @@ const PersonalInventory = () => {
             products.map((product) => (
               <div key={product.id} className="group flex flex-col md:flex-row items-center bg-white p-6 rounded-3xl shadow-sm border border-transparent hover:border-sabana-softGold/50 transition-all">
                 <div className="flex items-center gap-6 flex-1">
-                  <div className="relative">
-                    <img 
-                      src={product.imageUrl || smallLogo} 
-                      className="w-24 h-24 object-cover rounded-2xl border border-gray-100" 
-                      alt="Producto"
-                      onError={(e) => { e.target.src = smallLogo; }}
-                    />
-                    <div className="absolute -top-2 -right-2 flex gap-1">
-                      <button onClick={() => setEditingProduct(product)} className="bg-sabana-blue text-white p-2 rounded-lg hover:bg-sabana-softGold hover:text-sabana-blue transition-colors shadow-md">
-                        <Pencil size={14} />
-                      </button>
-                      <button onClick={() => handleDelete(product.id)} className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-md">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                <div className="relative">
+                  <img
+                    src={product.imageUrl || smallLogo}
+                    alt={product.title}
+                    className="w-20 h-20 object-cover rounded-2xl shadow-inner border border-defaultBorder-gray"
+                    onError={(e) => { e.target.src = smallLogo; }}
+                  />
+                    <button 
+                      onClick={() => setEditingProduct(product)} // <--- Ahora guarda el producto para editarlo
+                      className="absolute -top-2 -left-2 bg-sabana-blue text-white p-1.5 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-sabana-softGold hover:text-sabana-blue"
+                      title="Editar publicación"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(product.id)}
+                      className="absolute -top-2 -right-2 bg-error-bg-red text-error-red p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-error-red hover:text-white"
+                      title="Eliminar"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-sabana-blue">{product.title}</h3>
