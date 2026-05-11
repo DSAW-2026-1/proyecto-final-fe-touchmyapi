@@ -27,12 +27,13 @@ const PublicShowcase = () => {
     let isMounted = true;
     const fetchAllProducts = async () => {
       try {
-        // En despliegue, asegúrate de que esta URL sea una variable de entorno
-        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:8080/api/v1/products';
-        const response = await fetch(apiUrl);
+        // En despliegue, esta URL sea una variable de entorno
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const response = await fetch(`${apiUrl}/api/v1/products`);
         
         if (!response.ok) throw new Error('Error en la red');
         const dbProducts = await response.json();
+        const validatedDbProducts = Array.isArray(dbProducts) ? dbProducts : [];
 
         const mockProducts = [
           { 
@@ -56,10 +57,17 @@ const PublicShowcase = () => {
         ];
 
         if (isMounted) {
-          setProducts([...dbProducts, ...mockProducts]);
+          // Usamos el array validado para que no se estalle el .map()
+          setProducts([...validatedDbProducts, ...mockProducts]);
         }
       } catch (error) {
         console.error("Error al cargar productos:", error);
+        if (isMounted) {
+          // Si falla el back, al menos mostramos los mocks para que no se vea vacío
+          setProducts([
+            { id: 'm1', title: "iPad usado (Modo Offline)", price: 1000000, stock: 1, category: "ELECTRONICS", condition: "USED" },
+          ]);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }

@@ -5,8 +5,6 @@ import { FaInstagram } from 'react-icons/fa';
 import smallLogo from '../assets/sabanalogo.png'; 
 import completeLogo from '../assets/unisabanalogocomplete.png';
 
-// URL Base centralizada para evitar errores
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
 const PersonalInventory = () => {
   const navigate = useNavigate();
@@ -46,7 +44,8 @@ const PersonalInventory = () => {
   const handleDelete = async (id) => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer.")) {
       try {
-        const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const response = await fetch(`${API_BASE_URL}api/v1/products/${id}`, {
           method: 'DELETE',
         });
 
@@ -106,7 +105,8 @@ const PersonalInventory = () => {
 
       setIsSaving(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/products/${product.id}`, {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const response = await fetch(`${API_BASE_URL}api/v1/products/${product.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
