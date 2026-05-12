@@ -26,7 +26,7 @@ const PersonalInventory = () => {
         return;
       }
 
-      // Asegúrate de que el endpoint coincida con tu @GetMapping del backend
+      
       
       const response = await fetch(`${apiUrl}/api/v1/products/owner/${userEmail}`);
       if (response.ok) {
@@ -109,7 +109,7 @@ const PersonalInventory = () => {
         newErrors.description = 'La descripción es muy corta';
       }
   
-      // --- NUEVA VALIDACIÓN DE IMAGEN (URL) ---
+      // validación de imagen
       const urlTrim = (formData.imageUrl || '').trim();
       if (urlTrim) {
         try {

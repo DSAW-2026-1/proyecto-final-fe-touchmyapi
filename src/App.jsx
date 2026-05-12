@@ -11,14 +11,11 @@ const SuccessPage = lazy(() => import('./pages/SuccessPage'));
 const ErrorUserExistsPage = lazy(() => import('./pages/ErrorUserExistsPage'));
 const LoginSuccessPage = lazy(() => import('./pages/LoginSuccessPage'));
 const PublicShowcase = lazy(() => import('./pages/PublicShowcase'));
-<<<<<<< HEAD
 const AdminDashboard = lazy(()=> import('./pages/AdminDashboard'));
 import ProtectedRoute from './components/ProtectedRoute';
-=======
 const CartPage = lazy(() => import('./pages/CartPage'));
 // SE AÑADE LA IMPORTACIÓN PEREZOSA DEL CHECKOUT CONSERVANDO EL ESTILO DE TU CÓDIGO:
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
->>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
 
 // loader sencillo 
 const PageLoader = () => (
@@ -49,7 +46,6 @@ function App() {
           <Route path="/inventory" element={<PersonalInventory />} />
           <Route path="/create-product" element={<CreateProduct />} />
 
-<<<<<<< HEAD
           {/* Rutas de ADMIN */}
           <Route 
             path="/admin-control" 
@@ -59,13 +55,11 @@ function App() {
               </ProtectedRoute>
             } 
           />
-=======
           {/* NUEVA RUTA DEL CARRITO */}
           <Route path="/cart" element={<CartPage />} />
           
           {/* SE AÑADE LA NUEVA RUTA HACIA EL CHECKOUT: */}
           <Route path="/checkout" element={<CheckoutPage />} />
->>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
 
           {/* Ruta 404 - Por si escriben cualquier cosa en la URL */}
           <Route path="*" element={<Navigate to="/home" replace />} />

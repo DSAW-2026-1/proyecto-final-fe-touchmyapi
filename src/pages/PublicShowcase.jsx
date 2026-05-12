@@ -26,19 +26,11 @@ const PublicShowcase = () => {
     'OTHER': 'Otros',
   };
 
-<<<<<<< HEAD
   // 1. Fetch de productos con manejo de errores
-=======
->>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
   useEffect(() => {
     let isMounted = true;
     const fetchAllProducts = async () => {
       try {
-<<<<<<< HEAD
-        
-        
-=======
->>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
         const response = await fetch(`${apiUrl}/api/v1/products`);
         if (!response.ok) throw new Error('Error en la red');
         const dbProducts = await response.json();
@@ -84,10 +76,6 @@ const PublicShowcase = () => {
     return () => { isMounted = false; };
   }, [apiUrl]);
 
-<<<<<<< HEAD
-  
-=======
->>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -127,9 +115,6 @@ const PublicShowcase = () => {
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
-<<<<<<< HEAD
-  // Componente Modal
-=======
   // MODIFICADO: Helper verificado para agregar al carrito bloqueando usuarios no registrados
   const handleAddToCartClick = (e, product) => {
     e.stopPropagation(); // Detiene el click para que no se abra el modal de detalles
@@ -144,7 +129,6 @@ const PublicShowcase = () => {
   };
 
   // Componente Modal Extraído para limpieza
->>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
     return (
