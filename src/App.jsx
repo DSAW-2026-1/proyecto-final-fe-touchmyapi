@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { CartProvider } from './context/CartContext';
 
 // 1. Aplicamos Lazy Loading para mejorar la velocidad de carga inicial
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -10,6 +11,9 @@ const SuccessPage = lazy(() => import('./pages/SuccessPage'));
 const ErrorUserExistsPage = lazy(() => import('./pages/ErrorUserExistsPage'));
 const LoginSuccessPage = lazy(() => import('./pages/LoginSuccessPage'));
 const PublicShowcase = lazy(() => import('./pages/PublicShowcase'));
+const CartPage = lazy(() => import('./pages/CartPage'));
+// SE AÑADE LA IMPORTACIÓN PEREZOSA DEL CHECKOUT CONSERVANDO EL ESTILO DE TU CÓDIGO:
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 
 // Un loader sencillo para mientras cargan los componentes
 const PageLoader = () => (
@@ -20,6 +24,7 @@ const PageLoader = () => (
 
 function App() {
   return (
+    <CartProvider>
     <BrowserRouter>
       {/* Suspense es necesario para que lazy loading funcione */}
       <Suspense fallback={<PageLoader />}>
@@ -39,11 +44,18 @@ function App() {
           <Route path="/inventory" element={<PersonalInventory />} />
           <Route path="/create-product" element={<CreateProduct />} />
 
+          {/* NUEVA RUTA DEL CARRITO */}
+          <Route path="/cart" element={<CartPage />} />
+          
+          {/* SE AÑADE LA NUEVA RUTA HACIA EL CHECKOUT: */}
+          <Route path="/checkout" element={<CheckoutPage />} />
+
           {/* Ruta 404 - Por si escriben cualquier cosa en la URL */}
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
+    </CartProvider>
   );
 }
 
