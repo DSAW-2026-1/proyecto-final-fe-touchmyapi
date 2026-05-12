@@ -1,15 +1,23 @@
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; 
 
 const ProtectedRoute = ({ children }) => {
-  // Sacamos el usuario del localStorage (donde lo guardaste al hacer login)
-  const user = JSON.parse(localStorage.getItem('user'));
+  
+  const { user, isLoggedIn, loading } = useAuth();
 
-  // Verificamos si existe y si su rol es ADMIN
-  if (!user || user.role !== 'ADMIN') {
-    alert("¡Error! No tienes permisos de administrador.");
+  
+  if (loading) {
+    return null; 
+  }
+
+
+  if (!isLoggedIn || user?.role !== 'ADMIN') {
+    
+    alert("No tienes permisos de administrador para entrar aquí.");
     return <Navigate to="/login" replace />;
   }
 
+  
   return children;
 };
 

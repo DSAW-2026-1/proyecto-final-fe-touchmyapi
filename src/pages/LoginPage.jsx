@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import smallLogo from '../assets/sabanalogo.png';
 import { ArrowLeft } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const LoginPage = () => {
   const [showPass, setShowPass] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const apiUrl = import.meta.env.VITE_API_URL;
 
   const handleLogin = async (e) => {
@@ -39,24 +41,17 @@ const LoginPage = () => {
       });
 
       if (response.ok) {
-        // Obtenemos el objeto User que manda el Backend
         const userData = await response.json();
 
-        // GUARDAMOS LA SESIÓN
-        
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userEmail', userData.email);
-        localStorage.setItem('user', JSON.stringify(userData)); 
+       login(userData); 
 
         // REDIRECCIÓN SEGÚN ROL 
         if (userData.role === 'ADMIN') {
           navigate('/admin-control'); 
         } else {
+          
           navigate('/login-success');
         }
-      } else {
-        // Si el back responde 401 (Unauthorized)
-        setHasError(true);
       }
     } catch (error) {
       console.error("Error en la conexión:", error);
