@@ -108,13 +108,15 @@ const PublicShowcase = () => {
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('userId'); 
+    localStorage.removeItem('userEmail');
     window.location.reload();
   };
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const currentUserId = localStorage.getItem('userId'); 
+  const userData = isLoggedIn ? JSON.parse(localStorage.getItem('user')) : null;
 
-  // CORREGIDO: Helper optimizado utilizando "product.user?.id" y "Number()" para evitar fallos de tipo
+  //Helper optimizado utilizando "product.user?.id" y "Number()" para evitar fallos de tipo
   const handleAddToCartClick = (e, product) => {
     e.stopPropagation(); 
     
@@ -289,10 +291,12 @@ const PublicShowcase = () => {
           </div>
 
           <div className="flex items-center gap-4 border-l border-white/20 pl-5">
-            <div 
-              onClick={() => navigate(isLoggedIn ? '/inventory' : '/login')}
-              className="flex items-center gap-2 cursor-pointer hover:text-sabana-softGold transition-colors"
-            >
+          <div 
+            onClick={() => navigate(isLoggedIn ? '/inventory' : '/login')}
+            className="flex flex-col items-center gap-0.5 group cursor-pointer"
+          >
+            {/* Contenedor del Botón Principal */}
+            <div className="flex items-center gap-2 text-white group-hover:text-sabana-softGold transition-colors">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
                 <User size={18} />
               </div>
@@ -301,16 +305,24 @@ const PublicShowcase = () => {
               </span>
             </div>
 
-            {isLoggedIn && (
-              <button
-                onClick={handleLogout}
-                className="ml-2 p-2 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all duration-300"
-                title="Cerrar Sesión"
-              >
-                <LogOut size={18} />
-              </button>
+            {/* NOMBRE DEL USUARIO (Solo si está logueado) */}
+            {isLoggedIn && userData?.name && (
+              <span className="text-[10px] font-medium text-sabana-softGold/80 italic lowercase leading-none">
+                {userData.name}
+              </span>
             )}
           </div>
+
+          {isLoggedIn && (
+            <button
+              onClick={handleLogout}
+              className="ml-2 p-2 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all duration-300"
+              title="Cerrar Sesión"
+            >
+              <LogOut size={18} />
+            </button>
+          )}
+        </div>
         </div>
       </header>
 
