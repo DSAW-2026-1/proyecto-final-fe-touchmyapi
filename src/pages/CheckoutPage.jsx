@@ -162,11 +162,53 @@ const CheckoutPage = () => {
     if (validateStep('details')) setStep('shipping');
   };
 
-  const handleSubmitPayment = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false); // Nuevo estado para el botón
+
+  const handleSubmitPayment = async (e) => {
     e.preventDefault();
+    
     if (validateStep('payment')) {
-      // Simulación de envío exitoso / Integración lista para Spring Boot
-      setStep('confirmed');
+      setIsSubmitting(true);
+
+      // 1. Preparamos los items para el backend (OrderItem.java)
+      const orderItems = cartItems.map(item => ({
+        productId: item.id,
+        quantity: item.quantity,
+        price: item.price
+      }));
+
+      // 2. Preparamos el objeto de la Orden (Order.java)
+      const orderData = {
+        email: formData.emailOrPhone,
+        items: orderItems,
+        totalPrice: finalTotal,
+        status: "COMPLETED"
+      };
+
+      try {
+        // 3. Petición al backend para que el OrderController reste el stock
+        // Ajusta la URL si tu backend corre en otro puerto
+        const response = await fetch('http://localhost:5175/api/v1/orders/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderData),
+        });
+
+        if (response.ok) {
+          // Si el servidor responde 201 Created, el stock ya se restó en el DataStore
+          setStep('confirmed');
+        } else {
+          const errorMessage = await response.text();
+          alert(`Error al procesar la compra: ${errorMessage}`);
+        }
+      } catch (error) {
+        console.error("Error de conexión:", error);
+        alert("No se pudo conectar con el servidor. Verifica que el backend esté corriendo.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -424,8 +466,12 @@ const CheckoutPage = () => {
                 <button type="button" onClick={() => setStep('shipping')} className="text-sabana-blue text-xs font-bold underline hover:text-opacity-80 transition-all">
                   Volver a envío
                 </button>
-                <button type="submit" className="bg-sabana-blue text-white font-bold py-3.5 px-10 rounded-xl hover:bg-opacity-90 active:scale-95 transition-all text-sm shadow-md tracking-wide">
-                  Finalizar Pago
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className={`${isSubmitting ? 'bg-gray-400' : 'bg-sabana-blue'} text-white font-bold py-3.5 px-10 rounded-xl transition-all text-sm shadow-md tracking-wide`}
+                >
+                  {isSubmitting ? "Procesando..." : "Finalizar Pago"}
                 </button>
               </div>
             </form>
