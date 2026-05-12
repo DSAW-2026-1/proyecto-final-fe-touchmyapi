@@ -4,11 +4,11 @@ import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut 
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
-import { useCart } from '../context/CartContext'; // MODIFICADO: Importamos el hook del carrito
+import { useCart } from '../context/CartContext'; // Hook del carrito
 
 const PublicShowcase = () => {
   const navigate = useNavigate();
-  const { addToCart, getCartCount } = useCart(); // MODIFICADO: Extraemos las funciones que necesitamos
+  const { addToCart, getCartCount } = useCart(); 
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -44,6 +44,7 @@ const PublicShowcase = () => {
             stock: 1,
             category: "ELECTRONICS", 
             condition: "USED",
+            user: { id: 123 }, // CORREGIDO: Adaptado a la estructura real del backend (product.user.id)
             imageUrl: "https://photos.enjoei.com.br/ipad-pro-11-polegadas-4a-geracao-chip-m2-128-gb-wi-fi-cellular-cinza-espacial-115940100/1200xN/czM6Ly9waG90b3MuZW5qb2VpLmNvbS5ici9wcm9kdWN0cy81NTA4NDgzL2I5MjgwNmI1NWQ5NGU1NmNjYmFhOTM2MDY2ZjE0OWQ5LmpwZw"
           },
           { 
@@ -53,6 +54,7 @@ const PublicShowcase = () => {
             stock: 5,
             category: "ELECTRONICS", 
             condition: "NEW",
+            user: { id: 999 }, // CORREGIDO: Adaptado a la estructura real del backend
             imageUrl: "https://m.media-amazon.com/images/I/61cws8I2EzL._AC_.jpg" 
           }
         ];
@@ -64,7 +66,7 @@ const PublicShowcase = () => {
         console.error("Error al cargar productos:", error);
         if (isMounted) {
           setProducts([
-            { id: 'm1', title: "iPad usado (Modo Offline)", price: 1000000, stock: 1, category: "ELECTRONICS", condition: "USED" },
+            { id: 'm1', title: "iPad usado (Modo Offline)", price: 1000000, stock: 1, category: "ELECTRONICS", condition: "USED", user: { id: 123 } },
           ]);
         }
       } finally {
@@ -85,19 +87,14 @@ const PublicShowcase = () => {
   }, [products, searchTerm, selectedCategory]);
 
   const sortedPopular = useMemo(() => {
-    
     if (filteredProducts.length === 0) return [];
-  
-    // Calculamos el promedio basado en los productos que pasaron el filtro
     const totalStock = filteredProducts.reduce((acc, prod) => acc + (prod.stock || 0), 0);
     const averageStock = totalStock / filteredProducts.length;
   
-    //. Filtramos y ordenamos
     return filteredProducts
       .filter(product => (product.stock || 0) < averageStock)
       .sort((a, b) => (b.stock || 0) - (a.stock || 0))
       .slice(0, 4);
-      
   }, [filteredProducts]);
 
   const formatCurrency = useCallback((value) => {
@@ -110,18 +107,27 @@ const PublicShowcase = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userId'); 
     window.location.reload();
   };
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const currentUserId = localStorage.getItem('userId'); 
 
-  // MODIFICADO: Helper verificado para agregar al carrito bloqueando usuarios no registrados
+  // CORREGIDO: Helper optimizado utilizando "product.user?.id" y "Number()" para evitar fallos de tipo
   const handleAddToCartClick = (e, product) => {
-    e.stopPropagation(); // Detiene el click para que no se abra el modal de detalles
+    e.stopPropagation(); 
     
     if (!isLoggedIn) {
       alert("¡Hola! Para añadir productos al carrito debes iniciar sesión con tu cuenta Sabana.");
       navigate('/login');
+      return;
+    }
+
+    const sellerId = product.user?.id || product.sellerId; // Soporta tanto estructura real de backend como mocks anteriores
+
+    if (currentUserId && sellerId && Number(sellerId) === Number(currentUserId)) {
+      alert("¡Acción no permitida! No puedes comprar un artículo de tu propiedad.");
       return;
     }
     
@@ -131,6 +137,9 @@ const PublicShowcase = () => {
   // Componente Modal Extraído para limpieza
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
+    const sellerId = product.user?.id || product.sellerId;
+    const isOwner = currentUserId && sellerId && Number(sellerId) === Number(currentUserId);
+
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
@@ -171,7 +180,8 @@ const PublicShowcase = () => {
                   Contactar
                 </button>
               </div>
-              {/* MODIFICADO: Añadida verificación de inicio de sesión antes de ejecutar addToCart */}
+              
+              {/* CORREGIDO: Validación del botón del modal usando la nueva lógica unificada */}
               <button 
                 onClick={() => { 
                   if (!isLoggedIn) {
@@ -179,13 +189,24 @@ const PublicShowcase = () => {
                     navigate('/login');
                     return;
                   }
+                  
+                  if (isOwner) {
+                    alert("¡Acción no permitida! No puedes comprar un artículo de tu propiedad.");
+                    return;
+                  }
+
                   addToCart(product); 
                   onClose(); 
                 }}
-                className="w-full bg-sabana-blue text-white py-3 rounded-xl font-bold hover:bg-sabana-blue-hover transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                className={`w-full py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                  isOwner
+                    ? "bg-gray-400 text-white cursor-not-allowed opacity-80"
+                    : "bg-sabana-blue text-white hover:bg-sabana-blue-hover"
+                }`}
+                disabled={isOwner}
               >
                 <ShoppingCart size={18} />
-                Añadir al Carrito
+                {isOwner ? 'Tu Propio Producto' : 'Añadir al Carrito'}
               </button>
             </div>
           </div>
@@ -222,19 +243,8 @@ const PublicShowcase = () => {
               ))}
             </select>
             
-            {/* Flecha personalizada */}
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/60 group-hover:text-white transition-colors duration-300">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="14" 
-                height="14" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="3" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m6 9 6 6 6-6"/>
               </svg>
             </div>
@@ -245,23 +255,16 @@ const PublicShowcase = () => {
             <input 
               type="text" 
               placeholder="¿Qué estás buscando hoy?" 
-              className="w-full py-2.5 px-12 rounded-2xl bg-white/10 text-white placeholder:text-white/60 
-                        hover:bg-white/20 focus:bg-white focus:text-sabana-blue focus:outline-none 
-                        transition-all duration-300 shadow-inner text-sm"
+              className="w-full py-2.5 px-12 rounded-2xl bg-white/10 text-white placeholder:text-white/60 hover:bg-white/20 focus:bg-white focus:text-sabana-blue focus:outline-none transition-all duration-300 shadow-inner text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            
-            {/* Lupita a la izquierda */}
             <Search className="absolute left-4 top-2.5 text-white/50 group-hover:text-white/80 group-focus-within:text-sabana-blue w-5 h-5 transition-colors duration-300" />
 
-            {/* BOTÓN DE LIMPIAR (Aparece si hay texto o si se eligió categoría) */}
             {(searchTerm || selectedCategory !== "ALL") && (
               <button 
                 onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
-                className="absolute right-4 top-2.5 p-1 rounded-full text-white/50 hover:text-red-400 
-                          group-focus-within:text-sabana-blue/40 group-focus-within:hover:text-red-500 
-                          transition-all duration-200 z-10"
+                className="absolute right-4 top-2.5 p-1 rounded-full text-white/50 hover:text-red-400 group-focus-within:text-sabana-blue/40 group-focus-within:hover:text-red-500 transition-all duration-200 z-10"
                 title="Limpiar búsqueda"
               >
                 <X size={18} strokeWidth={3} />
@@ -276,11 +279,7 @@ const PublicShowcase = () => {
             <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
           </div>
 
-          {/* MODIFICADO: El ícono del carrito ahora navega a /cart al hacer click y muestra el contador dinámico */}
-          <div 
-            onClick={() => navigate('/cart')}
-            className="relative cursor-pointer group"
-          >
+          <div onClick={() => navigate('/cart')} className="relative cursor-pointer group">
             <ShoppingCart size={22} className="group-hover:text-sabana-softGold transition-colors" />
             {getCartCount() > 0 && (
               <span className="absolute -top-2 -right-2 bg-sabana-softGold text-sabana-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-sabana-blue animate-in zoom-in duration-200">
@@ -336,15 +335,17 @@ const PublicShowcase = () => {
         {/* SECCIÓN MÁS POPULARES */}
         {sortedPopular.length > 0 && (
           <section className="mb-20 animate-in fade-in duration-500">
-            <section className="mb-20">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
-                  <p className="text-gray-500 mt-1 text-sm">Los artículos con mayor disponibilidad hoy.</p>
-                </div>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
+                <p className="text-gray-500 mt-1 text-sm">Los artículos con mayor disponibilidad hoy.</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {sortedPopular.map((product) => (
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {sortedPopular.map((product) => {
+                const sId = product.user?.id || product.sellerId;
+                const isOwner = currentUserId && sId && Number(sId) === Number(currentUserId);
+                return (
                   <div 
                     key={`popular-${product.id}`} 
                     onClick={() => setSelectedProduct(product)} 
@@ -362,35 +363,38 @@ const PublicShowcase = () => {
                       </div>
                     </div>
                     <div className="px-2">
-                    {/* Sección de Categoría y Stock Combinada */}
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
-                        {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-                      </span>
-                      <span className={`text-[10px] font-bold uppercase transition-all ${
-                        product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'}`}>
-                        {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
-                      </span>
-                    </div> 
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                          {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase transition-all ${
+                          product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'}`}>
+                          {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
+                        </span>
+                      </div> 
 
-                    <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
-                    
-                    <div className="flex items-center justify-between mt-4">
-                      <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                      <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
                       
-                      {/* Botón con la función de agregar al carrito */}
-                      <div 
-                        onClick={(e) => handleAddToCartClick(e, product)}
-                        className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors cursor-pointer"
-                      >
-                        <ShoppingCart size={18} />
+                      <div className="flex items-center justify-between mt-4">
+                        <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                        
+                        <div 
+                          onClick={(e) => handleAddToCartClick(e, product)}
+                          className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                            isOwner
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
+                          }`}
+                          title={isOwner ? "Tu propio producto" : "Añadir al carrito"}
+                        >
+                          <ShoppingCart size={18} />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                ))}
-              </div>
-            </section>
+                );
+              })}
+            </div>
           </section>
         )}
 
@@ -402,53 +406,58 @@ const PublicShowcase = () => {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {loading ? (
-          // 1. Estado de carga (Skeletons)
           Array(4).fill(0).map((_, i) => (
             <div key={i} className="h-80 bg-gray-200 animate-pulse rounded-3xl" />
           ))
         ) : filteredProducts.length > 0 ? (
-          // 2. Si hay productos, los mostramos
-          filteredProducts.map((product) => (
-            <div 
-              key={product.id} 
-              onClick={() => setSelectedProduct(product)} 
-              className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20"
-            >
-              <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
-                <img
-                  src={product.imageUrl || logoSabana}
-                  alt={product.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  onError={(e) => { e.target.src = logoSabana; }}
-                />
-              </div>
-              <div className="px-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
-                    {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-                  </span>
-                  <span className={`text-[10px] font-bold uppercase transition-all ${
-                    product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'
-                  }`}>
-                    {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
-                  </span>
+          filteredProducts.map((product) => {
+            const sId = product.user?.id || product.sellerId;
+            const isOwner = currentUserId && sId && Number(sId) === Number(currentUserId);
+            return (
+              <div 
+                key={product.id} 
+                onClick={() => setSelectedProduct(product)} 
+                className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20"
+              >
+                <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
+                  <img
+                    src={product.imageUrl || logoSabana}
+                    alt={product.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    onError={(e) => { e.target.src = logoSabana; }}
+                  />
                 </div>
-                <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-                  {/* MODIFICADO: El botón de la tarjeta ahora agrega el producto al carrito */}
-                  <div 
-                    onClick={(e) => handleAddToCartClick(e, product)}
-                    className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors"
-                  >
-                    <ShoppingCart size={18} />
+                <div className="px-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                      {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                    </span>
+                    <span className={`text-[10px] font-bold uppercase transition-all ${
+                      product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'
+                    }`}>
+                      {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
+                  <div className="flex items-center justify-between mt-4">
+                    <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                    <div 
+                      onClick={(e) => handleAddToCartClick(e, product)}
+                      className={`p-2 rounded-xl transition-colors ${
+                        isOwner
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
+                      }`}
+                      title={isOwner ? "Tu propio producto" : "Añadir al carrito"}
+                    >
+                      <ShoppingCart size={18} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
-          // 3. MENSAJE DE "NO HAY RESULTADOS" (Lo nuevo)
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-white rounded-[40px] shadow-sm border border-dashed border-gray-200 animate-in fade-in zoom-in duration-500">
             <div className="bg-sabana-light p-6 rounded-full mb-6">
               <Search size={48} className="text-sabana-blue/20" />

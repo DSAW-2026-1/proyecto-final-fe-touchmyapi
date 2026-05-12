@@ -7,7 +7,9 @@ import { useCart } from '../context/CartContext';
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const { cartItems, addToCart, getCartCount, getCartTotalPrice, removeFromCart } = useCart();
+  
+  // SE INCLUYE LA NUEVA FUNCIÓN updateQuantity DEL CONTEXTO
+  const { cartItems, updateQuantity, getCartCount, getCartTotalPrice, removeFromCart } = useCart();
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-CO', {
@@ -29,22 +31,22 @@ const CartPage = () => {
     }
   }, [isLoggedIn, navigate]);
 
+  // CORREGIDO: Ahora disminuye la cantidad de 1 en 1 usando updateQuantity de forma segura
   const handleDecreaseQuantity = (item) => {
-    if (item.quantity <= 1) {
-      removeFromCart(item.id);
-    } else {
-      removeFromCart(item.id);
-    }
+    updateQuantity(item.id, item.quantity - 1, item.stock);
+  };
+
+  // NUEVA FUNCIÓN CONTROLADA: Incrementa validando el límite del stock del producto
+  const handleIncreaseQuantity = (item) => {
+    updateQuantity(item.id, item.quantity + 1, item.stock);
   };
 
   return (
-    // CORREGIDO: Fondo general de la página ahora es sabana-light
     <div className="min-h-screen bg-sabana-light font-sans antialiased flex flex-col justify-between">
       
       {/* NAVBAR */}
       <header className="bg-sabana-blue px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-          {/* Contenedor del logo con fondo sabana-light */}
           <div className="bg-sabana-light p-1.5 rounded-xl shadow-sm">
             <img src={logoSabana} alt="Logo Sabana" className="h-8 w-auto object-contain" />
           </div>
@@ -123,7 +125,6 @@ const CartPage = () => {
         </div>
 
         {cartItems.length === 0 ? (
-          /* CORREGIDO: Contenedor de carrito vacío ahora con fondo sabana-light */
           <div className="bg-sabana-light rounded-3xl p-12 text-center shadow-sm border border-gray-100">
             <p className="text-gray-500 text-lg font-medium mb-4">Tu carrito está vacío actualmente.</p>
             <button 
@@ -151,7 +152,6 @@ const CartPage = () => {
                     <tr key={item.id} className="align-middle">
                       {/* Producto */}
                       <td className="py-6 flex items-center gap-5">
-                        {/* CORREGIDO: Contenedor de la foto del item con fondo sabana-light */}
                         <div className="w-24 h-24 rounded-2xl overflow-hidden bg-sabana-light border border-gray-100 p-2 flex items-center justify-center shadow-sm">
                           <img 
                             src={item.imageUrl || logoSabana} 
@@ -176,13 +176,12 @@ const CartPage = () => {
                         {formatCurrency(item.price)}
                       </td>
 
-                      {/* Selector de cantidad [+ 1 -] */}
+                      {/* Selector de cantidad [+ 1 -] Modificado */}
                       <td className="py-6 text-center">
-                        {/* CORREGIDO: Caja del contador ahora con fondo sabana-light */}
                         <div className="inline-flex items-center justify-between border border-gray-300 rounded-md bg-sabana-light px-2 py-1 text-sm shadow-sm gap-3 select-none">
                           <button 
                             onClick={() => handleDecreaseQuantity(item)}
-                            className="text-gray-400 hover:text-gray-600 font-bold px-1"
+                            className="text-gray-400 hover:text-gray-600 font-bold px-1 transition-colors"
                           >
                             -
                           </button>
@@ -190,8 +189,8 @@ const CartPage = () => {
                             {item.quantity || 1}
                           </span>
                           <button 
-                            onClick={() => addToCart(item)}
-                            className="text-gray-400 hover:text-gray-600 font-bold px-1"
+                            onClick={() => handleIncreaseQuantity(item)}
+                            className="text-gray-400 hover:text-gray-600 font-bold px-1 transition-colors"
                           >
                             +
                           </button>
@@ -217,7 +216,6 @@ const CartPage = () => {
               <p className="text-[11px] text-gray-400 font-medium">
                 El costo del envío se calcula en la pantalla de envío
               </p>
-              {/* SE AÑADE EL EVENTO onClick PARA REDIRIGIR AL CHECKOUT PAGE */}
               <button 
                 onClick={() => navigate('/checkout')}
                 className="mt-4 bg-[#002D72] text-white px-10 py-3 rounded-lg font-bold text-sm hover:bg-opacity-90 active:scale-95 transition-all shadow-md tracking-wide"
@@ -232,16 +230,12 @@ const CartPage = () => {
       {/* FOOTER */}
       <footer className="bg-sabana-blue text-white pt-12 pb-8 w-full mt-auto">
         <div className="container mx-auto max-w-5xl px-6 flex flex-col items-center">
-          
           <div className="w-full h-[1px] bg-white/20 mb-10"></div>
-          
           <div className="text-center max-w-xl mx-auto mb-8 flex flex-col items-center">
-            {/* CORREGIDO: Caja del escudo del footer con fondo sabana-light */}
             <img src={logoSabana} alt="Escudo Unisabana" className="h-20 w-auto object-contain bg-sabana-light p-3 rounded-2xl mb-5 shadow-md" />
             <h2 className="text-xl font-semibold mb-6 tracking-tight leading-snug">
               ¿Quieres publicar tus productos en nuestra página?<br />¡Contáctanos!
             </h2>
-            
             <div className="flex justify-center items-center gap-8">
               <a href="#" className="text-white hover:text-sabana-softGold transition-colors" title="Instagram">
                 <FaInstagram size={28} />
@@ -254,7 +248,6 @@ const CartPage = () => {
               </a>
             </div>
           </div>
-
           <div className="w-full text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.25em] border-t border-white/10 pt-6 mt-4">
             Personas que inspiran personas - Marketplace Unisabana
           </div>
