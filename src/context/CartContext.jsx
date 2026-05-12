@@ -32,7 +32,7 @@ export const CartProvider = ({ children }) => {
   // 2. NUEVA FUNCIÓN: Para actualizar la cantidad directamente en la página del carrito (+ / -)
   const updateQuantity = (productId, newQuantity, maxStock) => {
     if (newQuantity > maxStock) {
-      alert(`No puedes agregar más. El stock máximo es ${maxStock}.`);
+      alert(`No puedes agregar más. El stock máximo de este producto es ${maxStock}.`);
       return;
     }
     
