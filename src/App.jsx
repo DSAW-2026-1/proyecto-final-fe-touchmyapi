@@ -10,8 +10,10 @@ const SuccessPage = lazy(() => import('./pages/SuccessPage'));
 const ErrorUserExistsPage = lazy(() => import('./pages/ErrorUserExistsPage'));
 const LoginSuccessPage = lazy(() => import('./pages/LoginSuccessPage'));
 const PublicShowcase = lazy(() => import('./pages/PublicShowcase'));
+const AdminDashboard = lazy(()=> import('./pages/AdminDashboard'));
+import ProtectedRoute from './components/ProtectedRoute';
 
-// Un loader sencillo para mientras cargan los componentes
+// loader sencillo 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-sabana-light">
     <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-sabana-blue"></div>
@@ -38,6 +40,16 @@ function App() {
           <Route path="/home" element={<PublicShowcase />} />
           <Route path="/inventory" element={<PersonalInventory />} />
           <Route path="/create-product" element={<CreateProduct />} />
+
+          {/* Rutas de ADMIN */}
+          <Route 
+            path="/admin-control" 
+            element={
+              <ProtectedRoute>
+                <AdminDashboard/>
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Ruta 404 - Por si escriben cualquier cosa en la URL */}
           <Route path="*" element={<Navigate to="/home" replace />} />

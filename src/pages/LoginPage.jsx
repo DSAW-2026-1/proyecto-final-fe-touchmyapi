@@ -4,9 +4,6 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import smallLogo from '../assets/sabanalogo.png';
 import { ArrowLeft } from 'lucide-react';
 
-// Configuración de la API para despliegue
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
-
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -19,7 +16,6 @@ const LoginPage = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     
-    // Validaciones básicas de formato
     const cleanEmail = email.toLowerCase().trim();
     const isEmailValid = cleanEmail.endsWith('@unisabana.edu.co');
     const isPasswordValid = password.length >= 6;
@@ -33,32 +29,38 @@ const LoginPage = () => {
     setHasError(false);
 
     try {
-      // Ajustamos la ruta para que coincida con tu backend desplegado
-      
       const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: cleanEmail,
           password: password
         }),
       });
 
-      const data = await response.text();
+      if (response.ok) {
+        // Obtenemos el objeto User que manda el Backend
+        const userData = await response.json();
 
-      if (response.ok && data.includes("exitoso")) {
-        // GUARDAMOS DATOS DE SESIÓN
+        // GUARDAMOS LA SESIÓN
+        
         localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userEmail', cleanEmail);
-        navigate('/login-success');
+        localStorage.setItem('userEmail', userData.email);
+        localStorage.setItem('user', JSON.stringify(userData)); 
+
+        // REDIRECCIÓN SEGÚN ROL 
+        if (userData.role === 'ADMIN') {
+          navigate('/admin-control'); 
+        } else {
+          navigate('/login-success');
+        }
       } else {
+        // Si el back responde 401 (Unauthorized)
         setHasError(true);
       }
     } catch (error) {
       console.error("Error en la conexión:", error);
-      alert("No se pudo conectar con el servidor de la Sabana. Verifica tu conexión.");
+      alert("No se pudo conectar con el servidor. Revisa si el backend está corriendo.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +97,7 @@ const LoginPage = () => {
             <h1 className="text-5xl font-bold text-white font-roboto-slab mb-2 tracking-tight">Ingresa a tu cuenta</h1>
             <p className={`text-sm max-w-[450px] mx-auto leading-tight font-medium transition-all duration-300 ${hasError ? 'text-sabana-softGold' : 'text-sabana-blue-light'}`}>
               {hasError 
-                ? '¡Ups! Parece que algo salió mal. Verifica que el correo sea @unisabana.edu.co o que la contraseña sea correcta.'
+                ? '¡Ups! Parece que algo salió mal. Verifica tus credenciales institucionales.'
                 : '¡Hola! Por favor ingresa con tu correo de la U para poder acceder a nuestros servicios.'}
             </p>
           </div>
@@ -107,7 +109,7 @@ const LoginPage = () => {
           <div className="flex items-center justify-center mb-6">
              <div className="h-[1px] bg-gray-100 flex-1"></div>
              <span className="px-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest whitespace-nowrap">
-               Iniciar sesión con correo institucional
+               Sesión Institucional
              </span>
              <div className="h-[1px] bg-gray-100 flex-1"></div>
           </div>
