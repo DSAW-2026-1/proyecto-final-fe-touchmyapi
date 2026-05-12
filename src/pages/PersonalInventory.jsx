@@ -3,12 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Search, Bell, User, Phone, Mail, Trash2, Plus, ArrowLeft, Pencil } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import smallLogo from '../assets/sabanalogo.png'; 
-import completeLogo from '../assets/unisabanalogocomplete.png';
-
-
+import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE
 
 const PersonalInventory = () => {
   const navigate = useNavigate();
+  const { user } = useAuth(); // <--- Extraemos el usuario del contexto
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -19,16 +18,14 @@ const PersonalInventory = () => {
   };
 
   const fetchProducts = async () => {
-    try {
-      const userEmail = localStorage.getItem('userEmail');
-      if (!userEmail) {
-        navigate('/login'); 
-        return;
-      }
+    // Si no hay usuario en el contexto, mandamos al login
+    if (!user || !user.email) {
+      navigate('/login');
+      return;
+    }
 
-      
-      
-      const response = await fetch(`${apiUrl}/api/v1/products/owner/${userEmail}`);
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/products/owner/${user.email}`);
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -41,8 +38,11 @@ const PersonalInventory = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    // Solo intentamos traer productos si el contexto ya cargó el usuario
+    if (user) {
+      fetchProducts();
+    }
+  }, [user]); 
 
   const handleDelete = async (id) => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer.")) {

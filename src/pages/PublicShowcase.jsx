@@ -113,8 +113,11 @@ const PublicShowcase = () => {
   };
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const currentUserId = localStorage.getItem('userId'); 
-  const userData = isLoggedIn ? JSON.parse(localStorage.getItem('user')) : null;
+  const userData = useMemo(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  }, []);
+const currentUserId = localStorage.getItem('userId');
 
   //Helper optimizado utilizando "product.user?.id" y "Number()" para evitar fallos de tipo
   const handleAddToCartClick = (e, product) => {
@@ -292,7 +295,17 @@ const PublicShowcase = () => {
 
           <div className="flex items-center gap-4 border-l border-white/20 pl-5">
           <div 
-            onClick={() => navigate(isLoggedIn ? '/PersonalInventory' : '/login')}
+            onClick={() => {
+              // Validamos doble: el flag de login Y que exista un ID de usuario
+              const checkLogin = localStorage.getItem('isLoggedIn') === 'true';
+              const checkId = localStorage.getItem('userId');
+              
+              if (checkLogin && checkId) {
+                navigate('/PersonalInventory');
+              } else {
+                navigate('/login');
+              }
+            }}
             className="flex flex-col items-center gap-0.5 group cursor-pointer"
           >
             {/* Contenedor del Botón Principal */}
