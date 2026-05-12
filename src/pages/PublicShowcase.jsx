@@ -4,9 +4,11 @@ import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut 
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
+import { useCart } from '../context/CartContext'; // MODIFICADO: Importamos el hook del carrito
 
 const PublicShowcase = () => {
   const navigate = useNavigate();
+  const { addToCart, getCartCount } = useCart(); // MODIFICADO: Extraemos las funciones que necesitamos
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,15 +26,20 @@ const PublicShowcase = () => {
     'OTHER': 'Otros',
   };
 
+<<<<<<< HEAD
   // 1. Fetch de productos con manejo de errores
+=======
+>>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
   useEffect(() => {
     let isMounted = true;
     const fetchAllProducts = async () => {
       try {
+<<<<<<< HEAD
         
         
+=======
+>>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
         const response = await fetch(`${apiUrl}/api/v1/products`);
-        
         if (!response.ok) throw new Error('Error en la red');
         const dbProducts = await response.json();
         const validatedDbProducts = Array.isArray(dbProducts) ? dbProducts : [];
@@ -59,13 +66,11 @@ const PublicShowcase = () => {
         ];
 
         if (isMounted) {
-          // Usamos el array validado para que no se estalle el .map()
           setProducts([...validatedDbProducts, ...mockProducts]);
         }
       } catch (error) {
         console.error("Error al cargar productos:", error);
         if (isMounted) {
-          // Si falla el back, al menos mostramos los mocks para que no se vea vacío
           setProducts([
             { id: 'm1', title: "iPad usado (Modo Offline)", price: 1000000, stock: 1, category: "ELECTRONICS", condition: "USED" },
           ]);
@@ -77,9 +82,12 @@ const PublicShowcase = () => {
 
     fetchAllProducts();
     return () => { isMounted = false; };
-  }, []);
+  }, [apiUrl]);
 
+<<<<<<< HEAD
   
+=======
+>>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -119,7 +127,24 @@ const PublicShowcase = () => {
 
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
+<<<<<<< HEAD
   // Componente Modal
+=======
+  // MODIFICADO: Helper verificado para agregar al carrito bloqueando usuarios no registrados
+  const handleAddToCartClick = (e, product) => {
+    e.stopPropagation(); // Detiene el click para que no se abra el modal de detalles
+    
+    if (!isLoggedIn) {
+      alert("¡Hola! Para añadir productos al carrito debes iniciar sesión con tu cuenta Sabana.");
+      navigate('/login');
+      return;
+    }
+    
+    addToCart(product);
+  };
+
+  // Componente Modal Extraído para limpieza
+>>>>>>> beb580caf3b9418464ec7fc2094e19386f5dec81
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
     return (
@@ -152,13 +177,31 @@ const PublicShowcase = () => {
             <p className="text-gray-600 text-sm mb-6 leading-relaxed">
               {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
             </p>
-            <div className="mt-auto flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
-                <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
+            <div className="mt-auto flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
+                  <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
+                </div>
+                <button className="bg-transparent border border-sabana-blue text-sabana-blue px-4 py-2 rounded-xl font-bold hover:bg-sabana-light transition-all text-sm">
+                  Contactar
+                </button>
               </div>
-              <button className="bg-sabana-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-sabana-blue-hover transition-all shadow-md active:scale-95">
-                Contactar
+              {/* MODIFICADO: Añadida verificación de inicio de sesión antes de ejecutar addToCart */}
+              <button 
+                onClick={() => { 
+                  if (!isLoggedIn) {
+                    alert("¡Hola! Para añadir productos al carrito debes iniciar sesión con tu cuenta Sabana.");
+                    navigate('/login');
+                    return;
+                  }
+                  addToCart(product); 
+                  onClose(); 
+                }}
+                className="w-full bg-sabana-blue text-white py-3 rounded-xl font-bold hover:bg-sabana-blue-hover transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+              >
+                <ShoppingCart size={18} />
+                Añadir al Carrito
               </button>
             </div>
           </div>
@@ -249,9 +292,17 @@ const PublicShowcase = () => {
             <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
           </div>
 
-          <div className="relative cursor-pointer group">
+          {/* MODIFICADO: El ícono del carrito ahora navega a /cart al hacer click y muestra el contador dinámico */}
+          <div 
+            onClick={() => navigate('/cart')}
+            className="relative cursor-pointer group"
+          >
             <ShoppingCart size={22} className="group-hover:text-sabana-softGold transition-colors" />
-            <span className="absolute -top-2 -right-2 bg-sabana-softGold text-sabana-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-sabana-blue">2</span>
+            {getCartCount() > 0 && (
+              <span className="absolute -top-2 -right-2 bg-sabana-softGold text-sabana-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-sabana-blue animate-in zoom-in duration-200">
+                {getCartCount()}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-4 border-l border-white/20 pl-5">
@@ -298,7 +349,7 @@ const PublicShowcase = () => {
       </section>
 
       <main className="container mx-auto px-6 py-16">
-        {/* SECCIÓN MÁS POPULARES (Primero para impacto visual) */}
+        {/* SECCIÓN MÁS POPULARES */}
         {sortedPopular.length > 0 && (
           <section className="mb-20 animate-in fade-in duration-500">
             <section className="mb-20">
@@ -327,24 +378,32 @@ const PublicShowcase = () => {
                       </div>
                     </div>
                     <div className="px-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
-                          {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-                        </span>
-                        <span className={`text-[10px] font-bold uppercase transition-all ${
-                          product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'}`}>
-                          {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
-                        </span>
-                      </div> 
-                      <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
-                      <div className="flex items-center justify-between mt-4">
-                        <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-                        <div className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors">
-                          <ShoppingCart size={18} />
-                        </div>
+                    {/* Sección de Categoría y Stock Combinada */}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                        {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase transition-all ${
+                        product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'}`}>
+                        {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
+                      </span>
+                    </div> 
+
+                    <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
+                    
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                      
+                      {/* Botón con la función de agregar al carrito */}
+                      <div 
+                        onClick={(e) => handleAddToCartClick(e, product)}
+                        className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors cursor-pointer"
+                      >
+                        <ShoppingCart size={18} />
                       </div>
                     </div>
                   </div>
+                </div>
                 ))}
               </div>
             </section>
@@ -393,7 +452,11 @@ const PublicShowcase = () => {
                 <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-                  <div className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors">
+                  {/* MODIFICADO: El botón de la tarjeta ahora agrega el producto al carrito */}
+                  <div 
+                    onClick={(e) => handleAddToCartClick(e, product)}
+                    className="bg-sabana-light p-2 rounded-xl text-sabana-blue hover:bg-sabana-blue hover:text-white transition-colors"
+                  >
                     <ShoppingCart size={18} />
                   </div>
                 </div>
@@ -444,7 +507,7 @@ const PublicShowcase = () => {
               <h4 className="font-bold mb-6 text-sabana-softGold uppercase tracking-widest text-xs">Universidad</h4>
               <ul className="space-y-4 text-sm text-white/80">
                 <li className="flex items-center gap-2 hover:text-sabana-softGold cursor-pointer transition-colors">
-                   Campus Chía <ExternalLink size={14} />
+                    Campus Chía <ExternalLink size={14} />
                 </li>
                 <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Directorio Estudiantil</li>
               </ul>
