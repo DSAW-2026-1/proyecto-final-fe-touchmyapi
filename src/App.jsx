@@ -39,7 +39,7 @@ function App() {
               <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
 
               <Route path="/home" element={<PublicShowcase />} />
-              <Route path="/inventory" element={<PersonalInventory />} />
+              <Route path="/PersonalInventory" element={<PersonalInventory />} />
               <Route path="/create-product" element={<CreateProduct />} />
 
               <Route 

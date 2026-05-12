@@ -292,7 +292,7 @@ const PublicShowcase = () => {
 
           <div className="flex items-center gap-4 border-l border-white/20 pl-5">
           <div 
-            onClick={() => navigate(isLoggedIn ? '/inventory' : '/login')}
+            onClick={() => navigate(isLoggedIn ? '/PersonalInventory' : '/login')}
             className="flex flex-col items-center gap-0.5 group cursor-pointer"
           >
             {/* Contenedor del Botón Principal */}
