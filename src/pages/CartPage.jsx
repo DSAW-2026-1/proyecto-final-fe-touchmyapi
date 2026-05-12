@@ -8,7 +8,7 @@ import { useCart } from '../context/CartContext';
 const CartPage = () => {
   const navigate = useNavigate();
   
-  // SE INCLUYE LA NUEVA FUNCIÓN updateQuantity DEL CONTEXTO
+  // NUEVA FUNCIÓN updateQuantity DEL CONTEXTO
   const { cartItems, updateQuantity, getCartCount, getCartTotalPrice, removeFromCart } = useCart();
 
   const formatCurrency = (value) => {
@@ -31,12 +31,12 @@ const CartPage = () => {
     }
   }, [isLoggedIn, navigate]);
 
-  // CORREGIDO: Ahora disminuye la cantidad de 1 en 1 usando updateQuantity de forma segura
+  
   const handleDecreaseQuantity = (item) => {
     updateQuantity(item.id, item.quantity - 1, item.stock);
   };
 
-  // NUEVA FUNCIÓN CONTROLADA: Incrementa validando el límite del stock del producto
+  
   const handleIncreaseQuantity = (item) => {
     updateQuantity(item.id, item.quantity + 1, item.stock);
   };
