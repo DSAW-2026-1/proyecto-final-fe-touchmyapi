@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { IoChevronBack } from 'react-icons/io5';
 import { useNavigate } from 'react-router-dom';
 import smallLogo from '../assets/sabanalogo.png';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES = [
   { value: 'ACADEMIC_SUPPLIES', label: 'Útiles académicos' },
@@ -86,19 +87,19 @@ const CreateProduct = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const { user } = useAuth(); 
+
   const handleSubmit = async (e) => {
-    
     e.preventDefault();
     setError('');
     
-    // 1. Validamos el formulario antes de seguir
+    // 1. Validamos el formulario
     if (!validateForm()) return;
 
-    // 2. Sacamos el correo de quien inició sesión
-    const loggedUserEmail = localStorage.getItem('userEmail');
-
-    if (!loggedUserEmail) {
+    // 2. CAMBIO CLAVE: Usamos el email del contexto, no del localStorage
+    if (!user || !user.email) {
       setError("No hay una sesión activa. Por favor inicia sesión.");
+      navigate('/login');
       return;
     }
 
@@ -114,10 +115,9 @@ const CreateProduct = () => {
         category: formData.category,
         condition: formData.condition,
         ...(imageUrl ? { imageUrl } : {}),
-        ownerEmail: loggedUserEmail, // <--- El correo dinámico
+        ownerEmail: user.email, // <--- Aquí usamos el dato real del contexto
       };
 
-      
       const response = await fetch(`${apiUrl}/api/v1/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,7 +126,8 @@ const CreateProduct = () => {
 
       if (response.ok) {
         alert('¡Producto publicado con éxito!');
-        navigate('/inventory'); 
+        // 3. CAMBIO: Corregí la ruta a /PersonalInventory que es como la tienes en App.jsx
+        navigate('/PersonalInventory'); 
       } else {
         const errorData = await response.text();
         throw new Error(errorData || 'No se pudo publicar el producto');

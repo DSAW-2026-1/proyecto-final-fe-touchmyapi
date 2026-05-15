@@ -80,9 +80,10 @@ const PublicShowcase = () => {
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
+      const hasStock = (product.stock || 0) > 0;
       const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      return hasStock && matchesSearch && matchesCategory;
     });
   }, [products, searchTerm, selectedCategory]);
 
