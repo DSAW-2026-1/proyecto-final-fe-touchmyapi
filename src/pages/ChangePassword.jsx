@@ -106,4 +106,4 @@ const ChangePassword = () => {
   );
 };
 
-export default ChangePassword; // ¡IMPORTANTE: Asegúrate de tener esta línea al final!o
+export default ChangePassword; 
