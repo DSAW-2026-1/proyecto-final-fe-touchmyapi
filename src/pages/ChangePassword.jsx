@@ -17,12 +17,42 @@ const ChangePassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Datos enviados:", passwords);
     
-    // AQUÍ iría tu lógica de fetch a tu API:
-    // await fetch('/api/change-password', { method: 'POST', body: JSON.stringify(passwords) });
+    // Obtenemos el email del usuario logueado
+    const userEmail = localStorage.getItem('userEmail'); 
     
-    alert("Funcionalidad de API pendiente de conectar");
+    if (!userEmail) {
+      alert("No se encontró sesión activa. Por favor, inicia sesión.");
+      return;
+    }
+  
+    try {
+      // Realizamos la petición (agregamos el email al body como espera tu backend)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          currentPassword: passwords.currentPassword,
+          newPassword: passwords.newPassword
+        })
+      });
+  
+      // Validamos la respuesta
+      const data = await response.json();
+  
+      if (response.ok) {
+        alert("¡Contraseña actualizada con éxito!");
+        setPasswords({ currentPassword: '', newPassword: '' });
+        navigate('/userprofile');
+      } else {
+        // Si el servidor responde con error (ej: 401), mostramos el mensaje del backend
+        alert(data.message || "Error al cambiar la contraseña");
+      }
+    } catch (error) {
+      console.error("Error de conexión:", error);
+      alert("Error de conexión con el servidor");
+    }
   };
 
   return (
@@ -76,4 +106,4 @@ const ChangePassword = () => {
   );
 };
 
-export default ChangePassword; // ¡IMPORTANTE: Asegúrate de tener esta línea al final!
+export default ChangePassword; // ¡IMPORTANTE: Asegúrate de tener esta línea al final!o
