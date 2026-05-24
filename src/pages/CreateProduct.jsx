@@ -128,7 +128,7 @@ const CreateProduct = () => {
 
       if (response.ok) {
         alert('¡Producto publicado con éxito!');
-        navigate('/PersonalInventory'); 
+        navigate('/PersonalInventory', { replace: true }); 
       } else {
         const errorData = await response.text();
         throw new Error(errorData || 'No se pudo publicar el producto');
