@@ -24,6 +24,9 @@ export default {
         'default-gray': '#424242', // Gris por defecto
         'defaultBorder-gray': '#EDF1F3', // Gris por defecto para bordes
       },
+      animation: {
+        'spin-slow': 'spin 8s linear infinite', // Un giro completo cada 8 segundos
+      },
 
       fontFamily: {
         'roboto': ['Roboto', 'ui-sans-serif', 'system-ui', 'sans-serif'], //Fuente para Texto y UI

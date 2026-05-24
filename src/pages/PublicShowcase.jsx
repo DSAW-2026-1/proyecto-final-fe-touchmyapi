@@ -74,7 +74,10 @@ const PublicShowcase = () => {
       const isNotMine = !user || !user.email || !product.ownerEmail || 
                         product.ownerEmail.toLowerCase() !== user.email.toLowerCase();
 
-      return matchesSearch && matchesCategory && isNotMine;
+      // 4.Verificar si tiene stock disponible (mayor a 0)
+      const hasStock = product.stock > 0;
+
+      return matchesSearch && matchesCategory && isNotMine && hasStock;
     });
   }, [products, searchTerm, selectedCategory, user]);
   const sortedPopular = useMemo(() => {

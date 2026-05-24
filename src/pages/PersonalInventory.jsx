@@ -292,8 +292,19 @@ const PersonalInventory = () => {
         </div>
         
         <div className="flex items-center gap-5">
-          <button onClick={() => navigate('/')} className="text-white/80 hover:text-white flex items-center gap-2 text-xs font-bold uppercase">
-            <ArrowLeft size={18} /> Inicio
+          <button onClick={() => {
+              // Revisamos la URL de la página inmediatamente anterior en el navegador
+              const previousPage = document.referrer;
+
+              // Si la página de la que viene incluye 'create-product', lo mandamos al perfil seguro
+              if (previousPage.includes('create-product')) {
+                navigate('/userprofile');
+              } else {
+                // Si viene de cualquier otra parte (del home, del perfil, etc.), hacemos el atrás normal
+                navigate(-1);
+              }
+            }} className="text-white/80 hover:text-white flex items-center gap-2 text-xs font-bold uppercase">
+            <ArrowLeft size={18} /> Atrás
           </button>
           <div className="w-10 h-10 rounded-xl bg-sabana-softGold/20 flex items-center justify-center border border-white/30">
             <User className="text-white w-6 h-6" />

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { ShoppingCart, CheckCircle, CreditCard, Truck, FileText, ChevronLeft } from 'lucide-react';
 import logoSabana from '../assets/sabanalogo.png';
 
@@ -9,6 +10,7 @@ const CheckoutPage = () => {
   
   // Sincronizado con tu Contexto
   const { cartItems = [], getCartTotalPrice, clearCart } = useCart();
+  const { user } = useAuth();
   
   // Estados de control
   const [step, setStep] = useState('details'); 
@@ -17,7 +19,7 @@ const CheckoutPage = () => {
 
   // Estados del Formulario
   const [formData, setFormData] = useState({
-    emailOrPhone: '',
+    email: '',
     receiveAtUniversity: false,
     firstName: '',
     lastName: '',
@@ -33,6 +35,15 @@ const CheckoutPage = () => {
     cardExpiry: '',
     cardCvv: ''
   });
+
+  useEffect(() => {
+    if (user?.email) {
+      setFormData(prev => ({
+        ...prev,
+        email: user.email.toLowerCase().trim()
+      }));
+    }
+  }, [user]);
 
   // --- FUNCIONES DE MÁSCARA Y FORMATEO ---
   const formatCardNumber = (value) => {
@@ -70,18 +81,18 @@ const CheckoutPage = () => {
     let tempErrors = {};
 
     if (currentStep === 'details') {
-      if (!formData.emailOrPhone || !formData.emailOrPhone.trim()) {
-        tempErrors.emailOrPhone = "El correo electrónico es obligatorio.";
+      if (!formData.email || !formData.email.trim()) {
+        tempErrors.email = "El correo electrónico es obligatorio.";
       }
       if (!formData.firstName || !formData.firstName.trim()) tempErrors.firstName = "El nombre es obligatorio.";
       if (!formData.lastName || !formData.lastName.trim()) tempErrors.lastName = "El apellido es obligatorio.";
       if (!formData.address || !formData.address.trim()) tempErrors.address = "La dirección de entrega es obligatoria.";
       if (!formData.city || !formData.city.trim()) tempErrors.city = "La ciudad es obligatoria.";
 
-      if (formData.emailOrPhone && formData.emailOrPhone.trim()) {
+      if (formData.email && formData.email.trim()) {
         const sabanaEmailRegex = /^[a-zA-Z0-9._%+-]+@unisabana\.edu\.co$/;
-        if (isNaN(formData.emailOrPhone.trim()) && !sabanaEmailRegex.test(formData.emailOrPhone.trim())) {
-          tempErrors.emailOrPhone = "Debes usar un correo institucional válido (@unisabana.edu.co).";
+        if (isNaN(formData.email.trim()) && !sabanaEmailRegex.test(formData.email.trim())) {
+          tempErrors.email = "Debes usar un correo institucional válido (@unisabana.edu.co).";
         }
       }
     }
@@ -136,14 +147,14 @@ const CheckoutPage = () => {
       }));
 
       const orderData = {
-        email: formData.emailOrPhone,
+        email: formData.email,
         items: orderItems,
         totalPrice: Number(finalTotal),
         status: "COMPLETED"
       };
 
       try {
-        // CORRECCIÓN 3: Referencia correcta a import.meta.env
+        
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/checkout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -208,17 +219,16 @@ const CheckoutPage = () => {
             <form onSubmit={handleSubmitDetails} className="animate-in fade-in duration-300">
               <h3 className="text-base font-bold text-sabana-blue mb-4">Contacto</h3>
               <div className="mb-3">
-                <input 
-                  type="text" 
-                  name="emailOrPhone"
-                  placeholder="Correo institucional o número de celular" 
-                  value={formData.emailOrPhone}
-                  onChange={handleInputChange}
-                  className={`w-full p-3 border rounded-xl text-sm focus:outline-none transition-all ${
-                    errors.emailOrPhone ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/30 focus:border-sabana-blue'
-                  }`}
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  readOnly
+                  disabled 
+                  placeholder="ejemplo@unisabana.edu.co"
+                  className="w-full bg-slate-100 border border-gray-200 rounded-xl p-3 text-sm text-gray-500 focus:outline-none cursor-not-allowed opacity-75 transition-all"
                 />
-                {errors.emailOrPhone && <p className="text-red-500 text-[11px] font-bold mt-1.5 px-1">{errors.emailOrPhone}</p>}
+                {errors.email && <p className="text-red-500 text-[11px] font-bold mt-1.5 px-1">{errors.email}</p>}
               </div>
               
               <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer mb-6 select-none">
@@ -269,7 +279,7 @@ const CheckoutPage = () => {
               <div className="border border-gray-200 bg-sabana-light/20 rounded-xl p-4 mb-8 text-sm text-gray-600 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400 font-medium w-20">Contacto</span>
-                  <span className="flex-1 truncate text-sabana-blue font-medium">{formData.emailOrPhone}</span>
+                  <span className="flex-1 truncate text-sabana-blue font-medium">{formData.email}</span>
                   <button onClick={() => setStep('details')} className="text-xs text-sabana-blue font-bold underline">Editar</button>
                 </div>
                 <div className="border-t border-gray-200/60 pt-3 flex justify-between items-center">
