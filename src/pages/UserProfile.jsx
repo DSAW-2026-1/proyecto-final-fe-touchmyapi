@@ -1,15 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Package, Settings, LogOut, ArrowLeft } from 'lucide-react';
-
+import { Package, Settings, ArrowLeft } from 'lucide-react';
 
 const UserProfile = () => {
   const navigate = useNavigate();
+  
+  // Obtenemos los datos del localStorage
   const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+  // Protección de ruta: Si no hay sesión, redirigir al login
+  useEffect(() => {
+    if (!isLoggedIn || !userData.email) {
+      navigate('/login');
+    }
+  }, [isLoggedIn, userData, navigate]);
+
+  // Si no está logueado, no renderizamos nada mientras ocurre la redirección
+  if (!isLoggedIn || !userData.email) return null;
+
+  // Extraemos el rol (asegúrate de que venga en el objeto userData)
+  const userRole = userData.role || 'Comprador'; 
 
   return (
     <div className="min-h-screen bg-sabana-light p-6">
-      {/* Botón de retorno */}
+      {/* Botón de retorno al Home */}
       <button 
         onClick={() => navigate('/home')} 
         className="flex items-center gap-2 text-sabana-blue font-bold mb-6 hover:text-sabana-blue-hover transition-colors"
@@ -26,7 +41,12 @@ const UserProfile = () => {
             </div>
             <div>
               <h1 className="text-3xl font-black">{userData.name || 'Usuario'}</h1>
-              <p className="text-sabana-softGold font-medium">{userData.email}</p>
+              <p className="text-sabana-softGold font-medium mb-2">{userData.email}</p>
+              
+              {/* Insignia de Rol basada en la lógica de tu login */}
+              <span className="bg-sabana-softGold text-sabana-blue px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider">
+                {userRole}
+              </span>
             </div>
           </div>
         </div>
@@ -48,11 +68,12 @@ const UserProfile = () => {
 
             {/* Tarjeta de Ajustes */}
             <div
-            onClick={() => navigate('/password')} 
-            className="border border-gray-100 p-6 rounded-3xl cursor-pointer hover:border-sabana-softGold transition-all group">
+              onClick={() => navigate('/change-password')} 
+              className="border border-gray-100 p-6 rounded-3xl cursor-pointer hover:border-sabana-softGold transition-all group"
+            >
               <Settings className="text-sabana-blue mb-4 group-hover:rotate-90 transition-transform" size={32} />
               <h3 className="font-bold text-sabana-blue">Configuración</h3>
-              <p className="text-sm text-gray-500">Actualiza tus datos personales</p>
+              <p className="text-sm text-gray-500">Cambiar contraseña y seguridad</p>
             </div>
           </div>
         </div>
