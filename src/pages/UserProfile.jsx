@@ -234,8 +234,14 @@ const UserProfile = () => {
                     <div className="space-y-1.5">
                       {order.items?.map((item, idx) => (
                         <div key={idx} className="flex justify-between text-xs font-medium text-gray-600 bg-white p-2 rounded-xl border border-gray-50">
-                          <span>{item.title || `Artículo ID: ${item.productId}`} <span className="text-gray-400 font-bold">(x{item.quantity})</span></span>
-                          <span className="font-bold text-gray-700">${(Number(item.price || 0) * Number(item.quantity)).toLocaleString('es-CO')}</span>
+                          <span>
+                            {item.title || `Artículo ID: ${item.productId}`}{' '}
+                            <span className="text-gray-400 font-bold">(x{item.quantity})</span>
+                          </span>
+                          
+                          <span className="font-bold text-gray-700">
+                            ${(Number(item.price || 0) * Number(item.quantity)).toLocaleString('es-CO')}
+                          </span>
                         </div>
                       ))}
                     </div>
