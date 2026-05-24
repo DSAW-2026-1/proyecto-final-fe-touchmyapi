@@ -49,7 +49,6 @@ const LoginPage = () => {
         if (userData.role === 'ADMIN') {
           navigate('/admin-control'); 
         } else {
-          
           navigate('/login-success');
         }
       } else {
