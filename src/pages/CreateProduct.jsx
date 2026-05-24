@@ -91,19 +91,18 @@ const CreateProduct = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     
     // 1. Validamos el formulario
     if (!validateForm()) return;
 
-    // 2. CAMBIO CLAVE: Usamos el email del contexto, no del localStorage
+    
     if (!user || !user.email) {
-      setError("No hay una sesión activa. Por favor inicia sesión.");
-      navigate('/login');
+      setError("Sesión inválida. Por favor inicia sesión nuevamente.");
       return;
     }
 
     setLoading(true);
+    setError('');
     
     try {
       const imageUrl = formData.imageUrl.trim();
@@ -115,18 +114,20 @@ const CreateProduct = () => {
         category: formData.category,
         condition: formData.condition,
         ...(imageUrl ? { imageUrl } : {}),
-        ownerEmail: user.email, // <--- Aquí usamos el dato real del contexto
+        ownerEmail: user.email, 
       };
 
       const response = await fetch(`${apiUrl}/api/v1/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...formData,
+          ownerEmail: user.email
+        }),
       });
 
       if (response.ok) {
         alert('¡Producto publicado con éxito!');
-        // 3. CAMBIO: Corregí la ruta a /PersonalInventory que es como la tienes en App.jsx
         navigate('/PersonalInventory'); 
       } else {
         const errorData = await response.text();
