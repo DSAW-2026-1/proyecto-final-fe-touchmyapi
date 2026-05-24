@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE
 
 const PersonalInventory = () => {
   const navigate = useNavigate();
-  const { user } = useAuth(); // <--- Extraemos el usuario del contexto
+  const { user, updateUserRole } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -29,6 +29,13 @@ const PersonalInventory = () => {
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
+        if (data.length > 0 && user.role === 'USER') {
+          updateUserRole('SELLER');
+        } 
+        // Si el inventario quedó vacío en la base de datos pero el contexto guardaba 'SELLER', reestablecemos a 'USER'
+        else if (data.length === 0 && user.role === 'SELLER') {
+          updateUserRole('USER');
+        }
       }
     } catch (error) {
       console.error("No pude conectar con el server:", error);

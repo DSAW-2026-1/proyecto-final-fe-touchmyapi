@@ -36,8 +36,17 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/'; // Opcional: redirigir al home
   };
 
+  const updateUserRole = (newRole) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updated = { ...prevUser, role: newRole };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, login, logout, loading, updateUserRole }}>
       {children}
     </AuthContext.Provider>
   );
