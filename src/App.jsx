@@ -4,7 +4,6 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext'; 
 import ProtectedRoute from './components/ProtectedRoute';
 
-
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const CreateProduct = lazy(() => import('./pages/CreateProduct'));
@@ -16,6 +15,8 @@ const PublicShowcase = lazy(() => import('./pages/PublicShowcase'));
 const AdminDashboard = lazy(()=> import('./pages/AdminDashboard'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword')); // CORREGIDO
 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-sabana-light">
@@ -39,6 +40,8 @@ function App() {
               <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
 
               <Route path="/home" element={<PublicShowcase />} />
+              <Route path="/userprofile" element={<UserProfile />} />
+              <Route path="/password" element={<ChangePassword />} />
               <Route path="/PersonalInventory" element={<PersonalInventory />} />
               <Route path="/create-product" element={<CreateProduct />} />
 

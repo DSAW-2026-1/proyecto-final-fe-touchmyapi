@@ -20,9 +20,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (userData) => {
+    const userId = userData?.id ?? userData?.userId ?? userData?.user_id;
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('userId', userData.id);
+    if (userId != null) localStorage.setItem('userId', String(userId));
+    if (userData?.email) localStorage.setItem('userEmail', userData.email);
     setUser(userData);
     setIsLoggedIn(true);
   };
