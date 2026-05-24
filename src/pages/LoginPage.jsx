@@ -52,6 +52,8 @@ const LoginPage = () => {
           
           navigate('/login-success');
         }
+      } else {
+           setHasError(true);
       }
     } catch (error) {
       console.error("Error en la conexión:", error);
