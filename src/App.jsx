@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
-import { AuthProvider } from './context/AuthContext'; 
+import { AuthProvider, useAuth } from './context/AuthContext'; 
 import ProtectedRoute from './components/ProtectedRoute';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));

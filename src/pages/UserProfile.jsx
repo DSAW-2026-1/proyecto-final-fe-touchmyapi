@@ -68,7 +68,7 @@ const UserProfile = () => {
 
             {/* Tarjeta de Ajustes */}
             <div
-              onClick={() => navigate('/change-password')} 
+              onClick={() => navigate('/password')} 
               className="border border-gray-100 p-6 rounded-3xl cursor-pointer hover:border-sabana-softGold transition-all group"
             >
               <Settings className="text-sabana-blue mb-4 group-hover:rotate-90 transition-transform" size={32} />
