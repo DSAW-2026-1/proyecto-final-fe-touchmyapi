@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserMinus, ShieldCheck, RefreshCw, GraduationCap } from 'lucide-react';
+import { UserMinus, ShieldCheck, RefreshCw, GraduationCap, KeyRound } from 'lucide-react';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -41,7 +41,31 @@ const AdminUsers = () => {
     }
   };
 
-  // NUEVA FUNCIÓN: Promover a Admin
+  const handleResetPassword = async (email, name) => {
+    const confirmed = window.confirm(`¿Estás seguro de que deseas restablecer la contraseña de ${name}?`);
+    
+    if (confirmed) {
+      try {
+        const response = await fetch(`${apiUrl}/api/v1/users/${email}/reset-password`, {
+          method: 'PATCH',
+        });
+  
+        if (response.ok) {
+          
+          window.alert(`Contraseña de ${name} restablecida a 12345678 correctamente.`);
+          
+          fetchUsers();
+        } else {
+          alert("No se pudo restablecer la contraseña.");
+        }
+      } catch (error) {
+        console.error("Error al restablecer la contraseña:", error);
+        alert("Error de conexión con el servidor.");
+      }
+    }
+  };
+
+  // Promover a Admin
   const handleToggleRole = async (email, currentRole) => {
     const action = currentRole === 'ADMIN' ? 'quitar permisos de admin a' : 'promover a admin a';
     
@@ -123,7 +147,7 @@ const AdminUsers = () => {
                     disabled={isMainAdmin}
                     className={`p-2 rounded-lg transition-all ${
                         isMainAdmin 
-                        ? 'text-gray-100' 
+                        ? 'text-gray-100 cursor-not-allowed' 
                         : isAdmin 
                             ? 'text-sabana-blue bg-blue-50 hover:bg-blue-100' 
                             : 'text-gray-400 hover:bg-gray-50'
@@ -131,6 +155,19 @@ const AdminUsers = () => {
                     title={isAdmin ? "Quitar rango Admin" : "Hacer Admin"}
                     >
                     <ShieldCheck size={20} className={isAdmin ? "fill-current" : ""} />
+                    </button>
+
+                    <button 
+                      onClick={() => handleResetPassword(u.email, u.name)}
+                      disabled={isMainAdmin}
+                      className={`p-2 rounded-lg transition-all ${
+                        isMainAdmin 
+                          ? 'text-gray-200 cursor-not-allowed'
+                          : 'text-amber-500 hover:bg-sabana-softGold'
+                      }`}
+                      title={isMainAdmin ? "Admin Principal (Protegido)" : "Restablecer contraseña"}
+                    >
+                      <KeyRound size={18} />
                     </button>
 
                     {/* Botón Eliminar */}

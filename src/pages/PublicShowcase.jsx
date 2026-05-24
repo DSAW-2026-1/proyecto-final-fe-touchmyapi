@@ -28,6 +28,11 @@ const PublicShowcase = () => {
     'OTHER': 'Otros',
   };
 
+  const hasMyOwnProducts = useMemo(() => {
+    if (!user || !user.email) return false;
+    return products.some(p => p.ownerEmail && p.ownerEmail.toLowerCase() === user.email.toLowerCase());
+  }, [products, user]);
+
   // Fetch de productos reales desde el Backend
   useEffect(() => {
     let isMounted = true;
@@ -57,13 +62,21 @@ const PublicShowcase = () => {
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      const hasStock = (product.stock || 0) > 0;
-      const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory;
-      return hasStock && matchesSearch && matchesCategory;
-    });
-  }, [products, searchTerm, selectedCategory]);
+      // 1. Filtro de búsqueda por título o descripción
+      const matchesSearch = 
+        product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase());
 
+      // 2. Filtro por categoría seleccionada
+      const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory;
+
+      // 3. Ocultar si el producto es del usuario logueado
+      const isNotMine = !user || !user.email || !product.ownerEmail || 
+                        product.ownerEmail.toLowerCase() !== user.email.toLowerCase();
+
+      return matchesSearch && matchesCategory && isNotMine;
+    });
+  }, [products, searchTerm, selectedCategory, user]);
   const sortedPopular = useMemo(() => {
     if (filteredProducts.length === 0) return [];
     const totalStock = filteredProducts.reduce((acc, prod) => acc + (prod.stock || 0), 0);
@@ -116,11 +129,7 @@ const PublicShowcase = () => {
       return;
     }
 
-    if (checkIfOwner(product)) {
-      alert("¡Acción no permitida! No puedes comprar un artículo de tu propiedad.");
-      return;
-    }
-    
+     
     addToCart(product);
   };
 
@@ -325,6 +334,19 @@ const PublicShowcase = () => {
         {/* SECCIÓN MÁS POPULARES */}
         {sortedPopular.length > 0 && (
           <section className="mb-20 animate-in fade-in duration-500">
+            {hasMyOwnProducts && (
+              <button
+                onClick={() => navigate('/PersonalInventory')} 
+                className="mb-3 inline-flex items-center gap-2 px-4 py-1.5 bg-sabana-blue-light/10 border border-sabana-blue-light/300 text-sabana-blue-light text-xs font-black uppercase tracking-widest rounded-full cursor-pointer hover:bg-sabana-softGold/20 hover:scale-[1.02] active:scale-[0.98] transition-all group duration-200"
+                title="Ir a gestionar mis publicaciones"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-sabana-blue-light animate-pulse"></span>
+                Tienes productos publicados en el Marketplace
+                <span className="transform group-hover:translate-x-1 transition-transform inline-block ml-1 font-bold">
+                  →
+                </span>
+              </button>
+            )}
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
