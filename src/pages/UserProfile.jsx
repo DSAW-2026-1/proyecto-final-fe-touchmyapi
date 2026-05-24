@@ -222,7 +222,7 @@ const UserProfile = () => {
                         <span className="text-xs font-black text-sabana-blue uppercase tracking-wider bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm">
                           Orden #{order.id}
                         </span>
-                        <p className="text-[10px] text-gray-400 font-medium mt-1">Destino: {order.city} - {order.address}</p>
+                        <p className="text-[10px] text-gray-400 font-medium mt-1">Destino: Universidad de la Sabana</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Pagado</p>
