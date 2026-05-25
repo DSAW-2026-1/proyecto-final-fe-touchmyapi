@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut } from 'lucide-react';
+import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut, Star, UserCheck, ShieldAlert } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
@@ -62,24 +62,21 @@ const PublicShowcase = () => {
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      // 1. Filtro de búsqueda por título o descripción
       const matchesSearch = 
         product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // 2. Filtro por categoría seleccionada
       const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory;
 
-      // 3. Ocultar si el producto es del usuario logueado
       const isNotMine = !user || !user.email || !product.ownerEmail || 
                         product.ownerEmail.toLowerCase() !== user.email.toLowerCase();
 
-      // 4.Verificar si tiene stock disponible (mayor a 0)
       const hasStock = product.stock > 0;
 
       return matchesSearch && matchesCategory && isNotMine && hasStock;
     });
   }, [products, searchTerm, selectedCategory, user]);
+
   const sortedPopular = useMemo(() => {
     if (filteredProducts.length === 0) return [];
     const totalStock = filteredProducts.reduce((acc, prod) => acc + (prod.stock || 0), 0);
@@ -114,9 +111,6 @@ const PublicShowcase = () => {
   }, [user]);
   const currentUserId = user?.id ?? userData?.id ?? localStorage.getItem('userId');
 
-  // =================================================================
-  // VALIDACIÓN: Comprueba si el producto pertenece al usuario actual
-  // =================================================================
   const checkIfOwner = useCallback((product) => {
     if (!currentUserId || !product) return false;
     const sellerId = product.user?.id || product.sellerId || product.userId || product.user_id;
@@ -125,32 +119,65 @@ const PublicShowcase = () => {
 
   const handleAddToCartClick = (e, product) => {
     e.stopPropagation(); 
-    
     if (!isLoggedIn) {
       alert("¡Hola! Para añadir productos al carrito debes iniciar sesión con tu cuenta Sabana.");
       navigate('/login');
       return;
     }
-
-     
     addToCart(product);
   };
 
-  // Componente Modal de Detalle de Producto
+  // =================================================================
+  // COMPONENTE MODAL DE DETALLE DE PRODUCTO (CON RESEÑAS Y SCROLL)
+  // =================================================================
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
     
-    // Uso de la validación
     const isOwner = checkIfOwner(product);
+
+    // Estados locales para almacenar la info asincrónica del vendedor y sus reseñas
+    const [sellerStats, setSellerStats] = useState({ fullName: "Cargando...", totalSales: 0 });
+    const [reviewData, setReviewData] = useState({ reviews: [], count: 0, average: null });
+    const [loadingMetadata, setLoadingMetadata] = useState(true);
+
+    useEffect(() => {
+      if (!product.ownerEmail) return;
+
+      const fetchMetadata = async () => {
+        try {
+          // 1. Traer estadísticas del vendedor
+          const statsRes = await fetch(`${apiUrl}/api/v1/reviews/seller-stats/${product.ownerEmail}`);
+          const statsData = statsRes.ok ? await statsRes.json() : { fullName: "Miembro Sabana", totalSales: 0 };
+          
+          // 2. Traer reseñas del producto
+          const reviewRes = await fetch(`${apiUrl}/api/v1/reviews/product/${product.id}`);
+          const revData = reviewRes.ok ? await reviewRes.json() : { reviews: [], count: 0, average: null };
+
+          setSellerStats(statsData);
+          setReviewData(revData);
+        } catch (error) {
+          console.error("Error al recopilar metadatos de reseñas:", error);
+        } finally {
+          setLoadingMetadata(false);
+        }
+      };
+
+      fetchMetadata();
+    }, [product]);
 
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
-        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in zoom-in duration-300">
+        
+        {/* Contenedor adaptado con scroll vertical global interno para el modal */}
+        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
+          
           <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md">
             <X size={20} />
           </button>
-          <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light">
+          
+          {/* LADO IZQUIERDO: Imagen Fija */}
+          <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light md:sticky md:top-0">
             <img 
               src={product.imageUrl || logoSabana} 
               alt={product.title}
@@ -158,22 +185,29 @@ const PublicShowcase = () => {
               onError={(e) => { e.target.src = logoSabana; }}
             />
           </div>
-          <div className="p-8 md:w-1/2 flex flex-col">
-            <div className="flex gap-2 mb-3">
-              <span className="text-[10px] font-bold bg-sabana-softGold/10 text-sabana-blue-light px-2 py-1 rounded-md uppercase">
-                {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-              </span>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${
-                product.condition === 'NEW' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-              }`}>
-                {product.condition === 'NEW' ? 'Nuevo' : 'Usado'}
-              </span>
+          
+          {/* LADO DERECHO: Toda la información con scroll natural hacia abajo */}
+          <div className="p-8 md:w-1/2 flex flex-col space-y-6">
+            <div>
+              <div className="flex gap-2 mb-3">
+                <span className="text-[10px] font-bold bg-sabana-softGold/10 text-sabana-blue-light px-2 py-1 rounded-md uppercase">
+                  {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${
+                  product.condition === 'NEW' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                }`}>
+                  {product.condition === 'NEW' ? 'Nuevo' : 'Usado'}
+                </span>
+              </div>
+              
+              <h2 className="text-2xl font-black text-sabana-blue mb-3">{product.title}</h2>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
+              </p>
             </div>
-            <h2 className="text-2xl font-black text-sabana-blue mb-3">{product.title}</h2>
-            <p className="text-gray-600 text-sm mb-6 leading-relaxed">
-              {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
-            </p>
-            <div className="mt-auto flex flex-col gap-3">
+
+            {/* Bloque de compra instantánea */}
+            <div className="bg-slate-50/80 border border-gray-100 p-4 rounded-2xl flex flex-col gap-3">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
                 <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
@@ -192,6 +226,96 @@ const PublicShowcase = () => {
                 {isOwner ? 'Tu Propio Producto' : 'Añadir al Carrito'}
               </button>
             </div>
+
+            {/* SECCIÓN NUEVA: Información Comercial del Vendedor */}
+            <div className="border-t border-gray-100 pt-5 space-y-3">
+              <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest flex items-center gap-1.5">
+                <UserCheck size={16} className="text-sabana-blue-light" /> Información del Vendedor
+              </h3>
+              
+              <div className="bg-sabana-light/50 p-4 rounded-2xl border border-sabana-blue/5">
+                <p className="text-sm font-bold text-sabana-blue">{sellerStats.fullName}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Ventas concretadas en campus: <span className="font-extrabold text-sabana-blue">{sellerStats.totalSales}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* SECCIÓN NUEVA: Calificaciones y Reseñas con Scroll */}
+            <div className="border-t border-gray-100 pt-5 space-y-4">
+              <div className="flex justify-between items-baseline">
+                <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest">
+                  Opiniones del Producto
+                </h3>
+                <span className="text-[10px] text-gray-400 font-bold">({reviewData.count} reseñas)</span>
+              </div>
+
+              {loadingMetadata ? (
+                <p className="text-xs text-gray-400 italic">Cargando reputación...</p>
+              ) : (
+                <>
+                  {/* Lógica del Promedio: < 10 vs >= 10 */}
+                  {reviewData.count < 10 ? (
+                    <div className="flex items-start gap-3 bg-amber-50/60 border border-amber-200/60 p-4 rounded-2xl">
+                      <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white px-2 py-0.5 rounded-md">
+                          Comprador Nuevo
+                        </span>
+                        <p className="text-xs text-amber-900 font-medium mt-1.5 leading-snug">
+                          Este vendedor aún no acumula las 10 calificaciones requeridas para calcular un promedio oficial en el campus.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl">
+                      <div className="bg-white px-3 py-2 rounded-xl border border-emerald-100 text-center shadow-xs">
+                        <span className="text-2xl font-black text-slate-800">{reviewData.average}</span>
+                        <span className="text-[10px] text-gray-400 font-bold block">de 5</span>
+                      </div>
+                      <div>
+                        <div className="flex gap-0.5 text-sabana-softGold">
+                          {Array(5).fill(0).map((_, i) => (
+                            <Star 
+                              key={i} 
+                              size={14} 
+                              className={i < Math.round(Number(reviewData.average)) ? 'fill-sabana-softGold text-sabana-softGold' : 'text-gray-200'} 
+                            />
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">Promedio calculado sobre {reviewData.count} transacciones.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Listado de comentarios */}
+                  <div className="space-y-3 mt-2">
+                    {reviewData.reviews.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic py-2 text-center bg-slate-50 rounded-xl border border-dashed border-gray-100">
+                        Aún no hay comentarios escritos sobre este artículo.
+                      </p>
+                    ) : (
+                      reviewData.reviews.map((rev) => (
+                        <div key={rev.id} className="border-b border-gray-50 pb-3 last:border-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] font-bold text-sabana-blue/60">{rev.buyerEmail?.split('@')[0]}</span>
+                            <div className="flex text-sabana-softGold">
+                              {Array(5).fill(0).map((_, i) => (
+                                <Star key={i} size={10} className={i < rev.rating ? 'fill-sabana-softGold' : 'text-gray-200'} />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-600 bg-slate-50/50 p-2.5 rounded-xl border border-gray-100/40">
+                            {rev.comment}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
           </div>
         </div>
       </div>
@@ -358,7 +482,6 @@ const PublicShowcase = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {sortedPopular.map((product) => {
-                // Uso de la validación aquí
                 const isOwner = checkIfOwner(product);
                 return (
                   <div 
@@ -427,7 +550,6 @@ const PublicShowcase = () => {
           ))
         ) : filteredProducts.length > 0 ? (
           filteredProducts.map((product) => {
-            // Uso de la validación aquí también
             const isOwner = checkIfOwner(product);
             return (
               <div 
@@ -537,7 +659,7 @@ const PublicShowcase = () => {
               <p className="text-xs text-white/40 font-bold">© 2026 Universidad de La Sabana</p>
             </div>
           </div>
-          <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.3em]">
+          <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.3em]\">
             Personas que inspiran personas - Marketplace
           </div>
         </div>
