@@ -70,16 +70,30 @@ const PersonalInventory = () => {
     }
   }, [user, navigate]);
 
-  // FUNCIÓN ASÍNCRONA PARA ACTUALIZAR EL ESTADO DE LA ORDEN DE MANERA DINÁMICA
+  // ACTUALIZACIÓN MEDIANTE EL MÉTODO PATCH SOLICITADO POR EL BACKEND
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       const response = await fetch(`${apiUrl}/api/v1/orders/${orderId}/status`, {
-        method: 'PATCH', // CAMBIADO A PATCH para coincidir con tus rutas
+        method: 'PATCH', // Cambiado de PUT a PATCH para sincronizarse con orderRoutes.js
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
-      
-      // ... resto del código igual ...
+
+      if (response.ok) {
+        setSales(sales.map(sale => sale.id === orderId ? { ...sale, status: newStatus } : sale));
+        if (newStatus === 'READY_FOR_DELIVERY') {
+          alert("¡Pedido marcado como listo! El comprador ya puede visualizarlo en su historial.");
+        } else if (newStatus === 'ENTREGADO') {
+          alert("¡Pedido marcado como entregado con éxito!");
+        }
+      } else {
+        alert("No se pudo actualizar el estado de la orden.");
+      }
+    } catch (error) {
+      console.error("Error actualizando orden:", error);
+      alert("Error al intentar conectar con el servidor.");
+    }
+  };
 
   const handleDeleteProduct = async (id) => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer y modificará tu catálogo.")) {
@@ -166,7 +180,7 @@ const PersonalInventory = () => {
                 : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}
           >
-            Cola de Ventas ({sales.filter(s => s.status !== 'ENTREGADO').length} Pendientes)
+            Cola de Ventas ({sales.filter(s => s.status !== 'ENTREGADO' && s.status !== 'DELIVERED').length} Pendientes)
           </button>
         </div>
 
@@ -233,89 +247,92 @@ const PersonalInventory = () => {
                 <p className="text-sm font-bold text-slate-700">Aún no has registrado ventas de tus productos.</p>
               </div>
             ) : (
-              sales.map((sale) => (
-                <div 
-                  key={sale.id} 
-                  className={`bg-white p-5 rounded-3xl shadow-sabana-card border transition-all flex flex-col gap-4 animate-fadeIn ${
-                    sale.status === 'ENTREGADO' ? 'border-emerald-100 bg-emerald-50/10 opacity-75' : 'border-gray-100'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                    <div>
-                      <span className="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">ORDEN #{sale.id}</span>
-                      <h4 className="text-xs font-bold text-slate-800 mt-1 flex items-center gap-1.5">
-                        <User size={13} className="text-gray-400" /> Comprador: <span className="text-sabana-blue font-black">{sale.buyerEmail || sale.email}</span>
-                      </h4>
-                      <p className="text-[11px] text-gray-400 font-medium mt-0.5">Punto de encuentro: {sale.address} ({sale.city})</p>
+              sales.map((sale) => {
+                const isFinalState = sale.status === 'ENTREGADO' || sale.status === 'DELIVERED';
+                return (
+                  <div 
+                    key={sale.id} 
+                    className={`bg-white p-5 rounded-3xl shadow-sabana-card border transition-all flex flex-col gap-4 animate-fadeIn ${
+                      isFinalState ? 'border-emerald-100 bg-emerald-50/10 opacity-75' : 'border-gray-100'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                      <div>
+                        <span className="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">ORDEN #{sale.id}</span>
+                        <h4 className="text-xs font-bold text-slate-800 mt-1 flex items-center gap-1.5">
+                          <User size={13} className="text-gray-400" /> Comprador: <span className="text-sabana-blue font-black">{sale.buyerEmail || sale.email}</span>
+                        </h4>
+                        <p className="text-[11px] text-gray-400 font-medium mt-0.5">Punto de encuentro: {sale.address} ({sale.city})</p>
+                      </div>
+
+                      <div>
+                        {isFinalState ? (
+                          <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                            <CheckCircle2 size={12} /> Entregado
+                          </span>
+                        ) : sale.status === 'READY_FOR_DELIVERY' ? (
+                          <span className="flex items-center gap-1 text-[10px] font-black text-amber-500 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">
+                            <Clock size={12} /> Listo para entrega
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                            <Clock size={12} /> Por Alistar
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div>
-                      {sale.status === 'ENTREGADO' ? (
-                        <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                          <CheckCircle2 size={12} /> Entregado
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Artículos a entregar:</p>
+                      {sale.items?.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-2xl border border-gray-100 text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg border bg-white overflow-hidden flex items-center justify-center shrink-0">
+                              <img 
+                                src={item.imageUrl && item.imageUrl.trim() !== '' ? item.imageUrl : smallLogo} 
+                                alt={item.title} 
+                                className="w-full h-full object-cover p-0.5" 
+                              />
+                            </div>
+                            <div>
+                              <p className="font-black text-slate-800 uppercase tracking-tight">{item.title || `Artículo ID: ${item.productId}`}</p>
+                              <p className="text-[10px] text-gray-400 font-bold">Cantidad: {item.quantity}</p>
+                            </div>
+                          </div>
+                          <p className="font-extrabold text-sabana-blue">${(Number(item.price || 0) * Number(item.quantity)).toLocaleString('es-CO')}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* CONTROL DE BOTONES DINÁMICOS DEL VENDEDOR */}
+                    <div className="pt-2 flex justify-end gap-2">
+                      {sale.status !== 'READY_FOR_DELIVERY' && !isFinalState && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(sale.id, 'READY_FOR_DELIVERY')}
+                          className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-sabana-blue text-white hover:bg-sabana-blue-hover active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                        >
+                          <Clock size={14} /> Marcar como Listo para Entregar
+                        </button>
+                      )}
+                      
+                      {sale.status === 'READY_FOR_DELIVERY' && (
+                        <span className="text-[11px] font-black uppercase bg-slate-100 text-slate-500 px-4 py-2.5 rounded-xl border border-slate-200 cursor-not-allowed">
+                          ⏰ Esperando confirmación del comprador
                         </span>
-                      ) : sale.status === 'READY_FOR_DELIVERY' ? (
-                        <span className="flex items-center gap-1 text-[10px] font-black text-amber-500 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">
-                          <Clock size={12} /> Listo para entrega
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                          <Clock size={12} /> Por Alistar
-                        </span>
+                      )}
+
+                      {!isFinalState && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(sale.id, 'ENTREGADO')}
+                          className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                        >
+                          <CheckCircle2 size={14} /> Forzar Entrega Completa
+                        </button>
                       )}
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Artículos a entregar:</p>
-                    {sale.items?.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-2xl border border-gray-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg border bg-white overflow-hidden flex items-center justify-center shrink-0">
-                            <img 
-                              src={item.imageUrl && item.imageUrl.trim() !== '' ? item.imageUrl : smallLogo} 
-                              alt={item.title} 
-                              className="w-full h-full object-cover p-0.5" 
-                            />
-                          </div>
-                          <div>
-                            <p className="font-black text-slate-800 uppercase tracking-tight">{item.title || `Artículo ID: ${item.productId}`}</p>
-                            <p className="text-[10px] text-gray-400 font-bold">Cantidad: {item.quantity}</p>
-                          </div>
-                        </div>
-                        <p className="font-extrabold text-sabana-blue">${(Number(item.price || 0) * Number(item.quantity)).toLocaleString('es-CO')}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* CONTROL DE BOTONES DINÁMICOS DEL VENDEDOR */}
-                  <div className="pt-2 flex justify-end gap-2">
-                    {sale.status !== 'READY_FOR_DELIVERY' && sale.status !== 'ENTREGADO' && (
-                      <button
-                        onClick={() => handleUpdateOrderStatus(sale.id, 'READY_FOR_DELIVERY')}
-                        className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-sabana-blue text-white hover:bg-sabana-blue-hover active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
-                      >
-                        <Clock size={14} /> Marcar como Listo para Entregar
-                      </button>
-                    )}
-                    
-                    {sale.status === 'READY_FOR_DELIVERY' && (
-                      <span className="text-[11px] font-black uppercase bg-slate-100 text-slate-500 px-4 py-2.5 rounded-xl border border-slate-200 cursor-not-allowed">
-                        ⏰ Esperando confirmación del comprador
-                      </span>
-                    )}
-
-                    {sale.status !== 'ENTREGADO' && (
-                      <button
-                        onClick={() => handleUpdateOrderStatus(sale.id, 'ENTREGADO')}
-                        className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
-                      >
-                        <CheckCircle2 size={14} /> Forzar Entrega Completa
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

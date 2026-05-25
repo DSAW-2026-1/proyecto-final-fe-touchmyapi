@@ -298,7 +298,7 @@ const CheckoutPage = () => {
             {/* SECCIÓN REQUERIDA DE ADVERTENCIA CON COLORES DE ALERTA ALINEADOS */}
             <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 text-left space-y-2 max-w-md mx-auto">
               <div className="flex items-center gap-1.5 text-amber-800 font-black text-[10px] uppercase tracking-wider">
-                <AlertTriangle size={14} className="text-amber-500 shrink-0" /> Notas Obligatorias del Marketplace:
+                <AlertTriangle size={14} className="text-amber-500 shrink-0" /> Recordatorios:
               </div>
               <ul className="space-y-1.5 text-[11px] text-slate-600 font-medium list-disc list-inside">
                 <li>
