@@ -253,14 +253,14 @@ const PublicShowcase = () => {
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
         
         {/* Contenedor adaptado con scroll vertical global interno para el modal */}
-        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
+        <div className="relative bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
           
           <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md">
             <X size={20} />
           </button>
           
           {/* LADO IZQUIERDO: Imagen Fija */}
-          <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light md:sticky md:top-0">
+          <div className="md:w-3/4 h-64 md:h-auto bg-sabana-light md:sticky md:top-0">
             <img 
               src={product.imageUrl || logoSabana} 
               alt={product.title}
