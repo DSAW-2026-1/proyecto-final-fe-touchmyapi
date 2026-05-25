@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut } from 'lucide-react';
+// MODIFICADO: Añadimos MessageSquare para el botón de chat
+import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut, MessageSquare } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
@@ -16,6 +17,11 @@ const PublicShowcase = () => {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
+  
+  // AÑADIDOS: Estados para controlar el modal flotante del primer mensaje
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [firstMessage, setFirstMessage] = useState("");
+  
   const apiUrl = import.meta.env.VITE_API_URL;
 
   const CATEGORY_LABELS = {
@@ -80,6 +86,7 @@ const PublicShowcase = () => {
       return matchesSearch && matchesCategory && isNotMine && hasStock;
     });
   }, [products, searchTerm, selectedCategory, user]);
+
   const sortedPopular = useMemo(() => {
     if (filteredProducts.length === 0) return [];
     const totalStock = filteredProducts.reduce((acc, prod) => acc + (prod.stock || 0), 0);
@@ -113,15 +120,24 @@ const PublicShowcase = () => {
     return savedUser ? JSON.parse(savedUser) : null;
   }, [user]);
   const currentUserId = user?.id ?? userData?.id ?? localStorage.getItem('userId');
+  const currentUserEmail = user?.email ?? userData?.email ?? localStorage.getItem('userEmail');
 
   // =================================================================
   // VALIDACIÓN: Comprueba si el producto pertenece al usuario actual
   // =================================================================
   const checkIfOwner = useCallback((product) => {
-    if (!currentUserId || !product) return false;
-    const sellerId = product.user?.id || product.sellerId || product.userId || product.user_id;
-    return Number(sellerId) === Number(currentUserId);
-  }, [currentUserId]);
+    if (!product) return false;
+    
+    // Validación cruzada estricta por Email u ID
+    if (currentUserEmail && product.ownerEmail && product.ownerEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
+      return true;
+    }
+    if (currentUserId) {
+      const sellerId = product.user?.id || product.sellerId || product.userId || product.user_id;
+      if (sellerId && Number(sellerId) === Number(currentUserId)) return true;
+    }
+    return false;
+  }, [currentUserId, currentUserEmail]);
 
   const handleAddToCartClick = (e, product) => {
     e.stopPropagation(); 
@@ -131,9 +147,65 @@ const PublicShowcase = () => {
       navigate('/login');
       return;
     }
-
-     
+    
     addToCart(product);
+  };
+
+  // AÑADIDO: Validación y redirección del botón de Chat del Navbar
+  const handleChatNavigation = () => {
+    if (!isLoggedIn) {
+      alert("¡Hola! Para ver tus chats debes iniciar sesión con tu cuenta Sabana.");
+      navigate('/login');
+      return;
+    }
+    navigate('/chat');
+  };
+
+  // AÑADIDO: Lógica mockeada para registrar el primer mensaje e iniciar la estructura del chat en LocalStorage
+  const handleSendFirstMessage = (e) => {
+    e.preventDefault();
+    if (!firstMessage.trim()) return;
+
+    if (!isLoggedIn) {
+      alert("¡Hola! Debes iniciar sesión con tu cuenta Sabana para enviar mensajes.");
+      navigate('/login');
+      return;
+    }
+
+    const sellerEmail = selectedProduct.ownerEmail || "";
+    const sellerId = selectedProduct.user?.id || selectedProduct.sellerId || selectedProduct.userId || "";
+
+    // Estructurar base de datos simulada local
+    const localChats = JSON.parse(localStorage.getItem('mock_chats') || '[]');
+    const chatId = `chat_${Date.now()}`;
+
+    const newChatRoom = {
+      id: chatId,
+      productId: selectedProduct.id,
+      productTitle: selectedProduct.title,
+      productImage: selectedProduct.imageUrl,
+      buyerId: currentUserId || 'comprador_anon',
+      buyerEmail: currentUserEmail || '',
+      sellerId: sellerId,
+      sellerEmail: sellerEmail,
+      messages: [
+        {
+          id: `msg_${Date.now()}`,
+          senderId: currentUserId || 'comprador_anon',
+          senderEmail: currentUserEmail || '',
+          text: firstMessage,
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+
+    localChats.push(newChatRoom);
+    localStorage.setItem('mock_chats', JSON.stringify(localChats));
+
+    alert(`¡Mensaje enviado con éxito al vendedor! Podrás seguir respondiendo desde el botón de chats en el menú superior.`);
+    setFirstMessage("");
+    setShowContactModal(false);
+    setSelectedProduct(null); // Cierra de igual forma el detalle del producto de manera limpia
   };
 
   // Componente Modal de Detalle de Producto
@@ -174,16 +246,35 @@ const PublicShowcase = () => {
               {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
             </p>
             <div className="mt-auto flex flex-col gap-3">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
-                <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
+                  <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
+                </div>
+                
+                {/* AÑADIDO: Botón Contactar visible para compradores, dispara el sub-modal */}
+                {!isOwner && (
+                  <button 
+                    onClick={() => {
+                      if (!isLoggedIn) {
+                        alert("¡Hola! Para contactar al vendedor debes iniciar sesión con tu cuenta Sabana.");
+                        navigate('/login');
+                        return;
+                      }
+                      setShowContactModal(true);
+                    }}
+                    className="bg-transparent border border-sabana-blue text-sabana-blue px-4 py-2 rounded-xl font-bold hover:bg-sabana-light transition-all text-sm"
+                  >
+                    Contactar
+                  </button>
+                )}
               </div>
               
               <button 
                 onClick={(e) => handleAddToCartClick(e, product)}
                 className={`w-full py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
                   isOwner
-                    ? "bg-gray-400 text-white cursor-not-allowed opacity-80"
+                    ? "bg-gray-400 text-white cursor-not-allowed opacity-80 shadow-none"
                     : "bg-sabana-blue text-white hover:bg-sabana-blue-hover"
                 }`}
                 disabled={isOwner}
@@ -256,6 +347,15 @@ const PublicShowcase = () => {
           <div className="relative cursor-pointer hover:text-sabana-softGold transition-colors">
             <Bell size={22} />
             <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
+          </div>
+
+          {/* AÑADIDO: Botón de chats al lado del carrito de compras */}
+          <div 
+            onClick={handleChatNavigation} 
+            className="relative cursor-pointer group" 
+            title="Mis Chats / Mensajes"
+          >
+            <MessageSquare size={22} className="group-hover:text-sabana-softGold transition-colors" />
           </div>
 
           <div onClick={() => navigate('/cart')} className="relative cursor-pointer group">
@@ -358,7 +458,6 @@ const PublicShowcase = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {sortedPopular.map((product) => {
-                // Uso de la validación aquí
                 const isOwner = checkIfOwner(product);
                 return (
                   <div 
@@ -427,7 +526,6 @@ const PublicShowcase = () => {
           ))
         ) : filteredProducts.length > 0 ? (
           filteredProducts.map((product) => {
-            // Uso de la validación aquí también
             const isOwner = checkIfOwner(product);
             return (
               <div 
@@ -544,6 +642,37 @@ const PublicShowcase = () => {
       </footer>
 
       <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+
+      {/* AÑADIDO: Formulario submodal flotante para la redacción del mensaje inicial */}
+      {showContactModal && selectedProduct && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
+          <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 animate-in fade-in zoom-in duration-200">
+            <button onClick={() => setShowContactModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-sabana-blue transition-colors">
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-sabana-blue mb-1">Enviar Mensaje de Interés</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Inicia una conversación por el producto: <span className="font-bold text-sabana-blue-light">{selectedProduct.title}</span>
+            </p>
+            <form onSubmit={handleSendFirstMessage} className="space-y-4">
+              <textarea
+                value={firstMessage}
+                onChange={(e) => setFirstMessage(e.target.value)}
+                placeholder="Ej: ¡Hola! Me interesa bastante el artículo. ¿En qué lugar de la universidad nos podríamos ver hoy?"
+                className="w-full h-32 p-3 text-sm rounded-xl border border-gray-200 focus:border-sabana-blue focus:outline-none resize-none"
+                required
+              />
+              <button
+                type="submit"
+                className="w-full py-3 bg-sabana-blue text-white font-bold rounded-xl text-sm hover:bg-sabana-blue-hover transition-all uppercase tracking-wider"
+              >
+                Enviar Mensaje Inicial
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
