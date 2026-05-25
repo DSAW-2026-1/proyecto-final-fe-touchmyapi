@@ -14,405 +14,414 @@ const CheckoutPage = () => {
   
   // Estados de control
   const [step, setStep] = useState('details'); 
-  const [isSubmitting, setIsSubmitting] = useState(false); // CORRECCIÓN 1: Estado definido
+  const [isSubmitting, setIsSubmitting] = useState(false); 
   const [errors, setErrors] = useState({});
+  const [realOrderId, setRealOrderId] = useState(''); // Guarda el ID real retornado por el backend
 
-  // Estados del Formulario
+  // Estados del Formulario con datos quemados e inicializados de forma limpia
   const [formData, setFormData] = useState({
-    email: '',
-    receiveAtUniversity: false,
-    firstName: '',
-    lastName: '',
-    address: '',
-    apartment: '',
-    city: '',
-    postalCode: '',
-    department: '',
-    saveInfo: false,
-    paymentMethod: 'card', 
-    cardNumber: '',
-    cardName: '',
-    cardExpiry: '',
-    cardCvv: ''
+    email: user?.email || '',
+    firstName: user?.name || '',
+    lastName: user?.lastName || '',
+    // Datos de envío quemados para la Universidad de La Sabana
+    address: 'Campus Universitario, Km 7 Autopista Norte',
+    apartment: 'Edificio de Ciencias o Lugar de Encuentro en Campus',
+    city: 'Chía',
+    postalCode: '250001',
+    department: 'Cundinamarca',
+    receiveAtUniversity: true,
+    paymentMethod: 'cod', // 'cod' = Cash on Delivery (Contraentrega) como único método
   });
 
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const totalProductsPrice = getCartTotalPrice();
+
+  // Redirección si el carrito está vacío y no estamos en la confirmación
   useEffect(() => {
-    if (user?.email) {
-      setFormData(prev => ({
-        ...prev,
-        email: user.email.toLowerCase().trim()
-      }));
+    if (cartItems.length === 0 && step !== 'confirmation') {
+      navigate('/publicshowcase');
     }
-  }, [user]);
-
-  // --- FUNCIONES DE MÁSCARA Y FORMATEO ---
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    return parts.length > 0 ? parts.join(' ') : v;
-  };
-
-  const formatExpiry = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) return `${v.substring(0, 2)}/${v.substring(2, 4)}`;
-    return v;
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    let targetValue = type === 'checkbox' ? checked : value;
-
-    if (name === 'cardNumber') targetValue = formatCardNumber(value).substring(0, 19);
-    if (name === 'cardExpiry') targetValue = formatExpiry(value).substring(0, 5);
-    if (name === 'cardCvv') targetValue = value.replace(/[^0-9]/g, '').substring(0, 4);
-    if (name === 'cardName') targetValue = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
-
-    setFormData(prev => ({ ...prev, [name]: targetValue }));
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
-  };
-
-  // --- SISTEMA DE VALIDACIONES ---
-  const validateStep = (currentStep) => {
-    let tempErrors = {};
-
-    if (currentStep === 'details') {
-      if (!formData.email || !formData.email.trim()) {
-        tempErrors.email = "El correo electrónico es obligatorio.";
-      }
-      if (!formData.firstName || !formData.firstName.trim()) tempErrors.firstName = "El nombre es obligatorio.";
-      if (!formData.lastName || !formData.lastName.trim()) tempErrors.lastName = "El apellido es obligatorio.";
-      if (!formData.address || !formData.address.trim()) tempErrors.address = "La dirección de entrega es obligatoria.";
-      if (!formData.city || !formData.city.trim()) tempErrors.city = "La ciudad es obligatoria.";
-
-      if (formData.email && formData.email.trim()) {
-        const sabanaEmailRegex = /^[a-zA-Z0-9._%+-]+@unisabana\.edu\.co$/;
-        if (isNaN(formData.email.trim()) && !sabanaEmailRegex.test(formData.email.trim())) {
-          tempErrors.email = "Debes usar un correo institucional válido (@unisabana.edu.co).";
-        }
-      }
-    }
-
-    if (currentStep === 'payment' && formData.paymentMethod === 'card') {
-      const cleanCardNumber = formData.cardNumber.replace(/\s/g, '');
-      if (!cleanCardNumber) tempErrors.cardNumber = "El número de tarjeta es obligatorio.";
-      else if (cleanCardNumber.length < 13 || cleanCardNumber.length > 16) tempErrors.cardNumber = "Número de tarjeta inválido.";
-
-      if (!formData.cardName || !formData.cardName.trim()) tempErrors.cardName = "El nombre del titular es obligatorio.";
-      
-      if (!formData.cardExpiry) tempErrors.cardExpiry = "La fecha de expiración es obligatoria.";
-      else if (!/^\d{2}\/\d{2}$/.test(formData.cardExpiry)) tempErrors.cardExpiry = "Formato MM/YY.";
-      else {
-        const [monthStr, yearStr] = formData.cardExpiry.split('/');
-        const month = parseInt(monthStr, 10);
-        const year = parseInt(yearStr, 10) + 2000;
-        const currentDate = new Date();
-        if (month < 1 || month > 12) tempErrors.cardExpiry = "Mes inválido.";
-        else if (year < currentDate.getFullYear() || (year === currentDate.getFullYear() && month < (currentDate.getMonth() + 1))) {
-          tempErrors.cardExpiry = "Tarjeta vencida.";
-        }
-      }
-
-      if (!formData.cardCvv) tempErrors.cardCvv = "CVV obligatorio.";
-      else if (formData.cardCvv.length < 3 || formData.cardCvv.length > 4) tempErrors.cardCvv = "CVV inválido.";
-    }
-
-    setErrors(tempErrors);
-    return Object.keys(tempErrors).length === 0;
-  };
-
-  // --- MANEJADORES DE ENVÍO (SUBMIT) ---
-  
-  // CORRECCIÓN 2: Función para manejar el primer paso agregada
-  const handleSubmitDetails = (e) => {
-    e.preventDefault();
-    if (validateStep('details')) {
-      setStep('shipping');
-    }
-  };
-
-  const handleSubmitPayment = async (e) => {
-    e.preventDefault();
-    if (validateStep('payment')) {
-      setIsSubmitting(true);
-
-      const orderItems = cartItems.map(item => ({
-        productId: item.id,
-        quantity: item.quantity,
-        price: Number(item.price)
-      }));
-
-      const orderData = {
-        email: formData.email,
-        items: orderItems,
-        totalPrice: Number(finalTotal),
-        status: "COMPLETED"
-      };
-
-      try {
-        
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/orders/checkout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(orderData),
-        });
-
-        if (response.ok) {
-          if (clearCart) clearCart(); 
-          setStep('confirmed');
-        } else {
-          const errorMessage = await response.text();
-          alert(`Error al procesar la compra: ${errorMessage}`);
-        }
-      } catch (error) {
-        console.error("Error de conexión:", error);
-        alert("No se pudo conectar con el servidor.");
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-  };
+  }, [cartItems, step, navigate]);
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(value);
+    return `$${Number(value).toLocaleString('es-CO')}`;
   };
 
-  const totalProductsPrice = getCartTotalPrice ? getCartTotalPrice() : 0;
-  const shippingCost = 0; 
-  const finalTotal = totalProductsPrice + shippingCost;
+  // Manejo de navegación de pasos con validaciones sencillas
+  const handleNextStep = (nextStep) => {
+    setErrors({});
+    if (step === 'details') {
+      if (!formData.email) {
+        setErrors({ email: 'El correo electrónico es requerido' });
+        return;
+      }
+    }
+    setStep(nextStep);
+  };
+
+  // Envío final de la orden al Backend
+  const handleSubmitOrder = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const orderPayload = {
+      email: formData.email,
+      address: formData.address,
+      city: formData.city,
+      paymentMethod: "Contraentrega",
+      totalAmount: totalProductsPrice,
+      items: cartItems.map(item => ({
+        ...item,              
+        productId: item.id    
+      }))
+    };
+
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/orders/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload)
+      });
+
+      if (response.ok) {
+        const savedOrder = await response.json();
+        // Cuarto Punto: Capturamos el ID incremental real generado en el backend
+        setRealOrderId(savedOrder.id || 'N/A');
+        clearCart();
+        setStep('confirmation');
+      } else {
+        const errorText = await response.text();
+        alert(`Error al procesar la orden: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Error en la conexión con el servidor:", error);
+      alert("Hubo un error de red al procesar tu orden.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-sabana-light font-sans antialiased flex flex-col md:flex-row">
-      
-      {/* SECCIÓN IZQUIERDA: FORMULARIOS */}
-      <div className="w-full md:w-7/12 p-6 md:p-16 flex flex-col justify-between bg-white md:rounded-r-3xl md:shadow-lg z-10">
-        <div>
-          <div className="flex items-center justify-between border-b pb-4 mb-6">
-            <div className="bg-sabana-light p-1.5 rounded-xl shadow-sm">
-              <img src={logoSabana} alt="Logo Sabana" className="h-9 w-auto object-contain" />
-            </div>
-            <div className="w-8 h-8 rounded-xl bg-sabana-light flex items-center justify-center text-sabana-blue">
-              <ShoppingCart size={16} />
-            </div>
+    <div className="min-h-screen bg-sabana-light font-roboto flex flex-col">
+      {/* HEADER INSTITUCIONAL */}
+      <header className="bg-sabana-blue text-white py-4 px-6 sticky top-0 z-50 shadow-md flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img src={logoSabana} alt="Logo Sabana" className="h-10 w-auto bg-white p-1 rounded-lg" />
+          <h1 className="text-xl font-roboto-slab font-black uppercase tracking-wider">Marketplace Sabana</h1>
+        </div>
+        
+        {/* Quinto Punto: Botón para volver al carrito (Deshabilitado en la pantalla de confirmación) */}
+        <button
+          onClick={() => navigate('/cart-page')}
+          disabled={step === 'confirmation'}
+          className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-all px-4 py-2 rounded-xl border
+            ${step === 'confirmation' 
+              ? 'opacity-40 cursor-not-allowed border-white/20 text-white/40' 
+              : 'border-white/30 text-sabana-blue-light bg-white/5 hover:bg-white/10 hover:text-white'}`}
+        >
+          <ChevronLeft size={16} /> Volver al Carrito
+        </button>
+      </header>
+
+      {/* CONTENIDO PRINCIPAL */}
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* BLOQUE IZQUIERDO: PROCESO DE PAGO (8 Columnas) */}
+        <div className={`${step === 'confirmation' ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-6`}>
+          
+          {/* INDICADOR DE PASOS (STEPPER) */}
+          <div className="bg-white p-4 rounded-3xl shadow-sabana-card flex justify-between items-center overflow-x-auto gap-4">
+            {[
+              { id: 'details', label: 'Detalles', icon: FileText },
+              { id: 'shipping', label: 'Envío', icon: Truck },
+              { id: 'payment', label: 'Pago', icon: CreditCard },
+              { id: 'confirmation', label: 'Confirmación', icon: CheckCircle }
+            ].map((s, index, arr) => {
+              const IconComponent = s.icon;
+              const isActive = step === s.id;
+              const isPast = arr.findIndex(item => item.id === step) > index;
+              
+              return (
+                <div key={s.id} className="flex items-center flex-1 last:flex-none">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all font-bold text-xs
+                      ${isActive ? 'bg-sabana-blue text-white shadow-lg scale-105' : ''}
+                      ${isPast ? 'bg-emerald-500 text-white' : ''}
+                      ${!isActive && !isPast ? 'bg-gray-100 text-gray-400' : ''}`}
+                    >
+                      {isPast ? <CheckCircle size={14} /> : index + 1}
+                    </div>
+                    <span className={`text-xs font-black uppercase tracking-widest hidden sm:inline
+                      ${isActive ? 'text-sabana-blue' : 'text-gray-400'}`}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                  {index < arr.length - 1 && (
+                    <div className={`h-0.5 flex-1 mx-4 rounded-full hidden sm:block transition-colors duration-300
+                      ${isPast ? 'bg-emerald-500' : 'bg-gray-200'}`} 
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <nav className="text-xs font-medium text-gray-400 flex gap-2 mb-8 items-center select-none">
-            <span className={step === 'details' ? 'text-sabana-blue font-bold underline decoration-sabana-softGold' : ''}>Carrito</span>
-            <span>&gt;</span>
-            <span className={step === 'details' ? 'text-sabana-blue font-bold' : 'text-gray-600'}>Detalles</span>
-            <span>&gt;</span>
-            <span className={step === 'shipping' ? 'text-sabana-blue font-bold' : ''}>Envío</span>
-            <span>&gt;</span>
-            <span className={step === 'payment' || step === 'confirmed' ? 'text-sabana-blue font-bold' : ''}>Pago</span>
-          </nav>
-
-          {/* STEP 1: DETALLES */}
+          {/* PASO 1: DETALLES (Nombre, Apellido y Correo Quemados) */}
           {step === 'details' && (
-            <form onSubmit={handleSubmitDetails} className="animate-in fade-in duration-300">
-              <h3 className="text-base font-bold text-sabana-blue mb-4">Contacto</h3>
-              <div className="mb-3">
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  readOnly
-                  disabled 
-                  placeholder="ejemplo@unisabana.edu.co"
-                  className="w-full bg-slate-100 border border-gray-200 rounded-xl p-3 text-sm text-gray-500 focus:outline-none cursor-not-allowed opacity-75 transition-all"
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sabana-card space-y-6 animate-fadeIn">
+              <h2 className="text-xl font-roboto-slab font-black text-sabana-blue uppercase tracking-wider border-b border-gray-100 pb-3">
+                Información Personal
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Nombre</label>
+                  <input 
+                    type="text" 
+                    value={formData.firstName} 
+                    disabled 
+                    className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-bold cursor-not-allowed outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Apellido</label>
+                  <input 
+                    type="text" 
+                    value={formData.lastName} 
+                    disabled 
+                    className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-bold cursor-not-allowed outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Correo Institucional</label>
+                <input 
+                  type="email" 
+                  value={formData.email} 
+                  disabled
+                  className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-bold cursor-not-allowed outline-none"
                 />
-                {errors.email && <p className="text-red-500 text-[11px] font-bold mt-1.5 px-1">{errors.email}</p>}
               </div>
-              
-              <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer mb-6 select-none">
-                <input type="checkbox" name="receiveAtUniversity" checked={formData.receiveAtUniversity} onChange={handleInputChange} className="rounded border-gray-300 text-sabana-blue" />
-                Contacto para recibir el pedido en la universidad
-              </label>
-
-              <h3 className="text-base font-bold text-sabana-blue mb-4">Datos para el envío</h3>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <input type="text" name="firstName" placeholder="Nombre" value={formData.firstName} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.firstName ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/30'}`} />
-                  {errors.firstName && <p className="text-red-500 text-[11px] font-bold mt-1 px-1">{errors.firstName}</p>}
-                </div>
-                <div>
-                  <input type="text" name="lastName" placeholder="Apellido" value={formData.lastName} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.lastName ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/30'}`} />
-                  {errors.lastName && <p className="text-red-500 text-[11px] font-bold mt-1 px-1">{errors.lastName}</p>}
-                </div>
-              </div>
-              
-              <div className="mb-3">
-                <input type="text" name="address" placeholder="Dirección" value={formData.address} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.address ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/30'}`} />
-                {errors.address && <p className="text-red-500 text-[11px] font-bold mt-1.5 px-1">{errors.address}</p>}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="col-span-1">
-                  <input type="text" name="city" placeholder="Ciudad" value={formData.city} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.city ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/30'}`} />
-                  {errors.city && <p className="text-red-500 text-[11px] font-bold mt-1 px-1">{errors.city}</p>}
-                </div>
-                <input type="text" name="postalCode" placeholder="C.P." value={formData.postalCode} onChange={handleInputChange} className="p-3 border border-gray-300 bg-sabana-light/30 rounded-xl text-sm" />
-                <select name="department" value={formData.department} onChange={handleInputChange} className="p-3 border border-gray-300 bg-sabana-light/30 rounded-xl text-sm">
-                  <option value="">Depto</option>
-                  <option value="Cundinamarca">Cundinamarca</option>
-                  <option value="Bogota">Bogotá D.C.</option>
-                </select>
-              </div>
-
-              <div className="flex justify-between items-center mt-6 border-t pt-4">
-                <button type="button" onClick={() => navigate('/cart')} className="text-sabana-blue text-xs font-bold underline">Volver al carrito</button>
-                <button type="submit" className="bg-sabana-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-opacity-90 active:scale-95 transition-all text-sm shadow-md">Ir a envío</button>
-              </div>
-            </form>
-          )}
-
-          {/* STEP 2: ENVÍO */}
-          {step === 'shipping' && (
-            <div className="animate-in fade-in duration-300">
-              <div className="border border-gray-200 bg-sabana-light/20 rounded-xl p-4 mb-8 text-sm text-gray-600 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 font-medium w-20">Contacto</span>
-                  <span className="flex-1 truncate text-sabana-blue font-medium">{formData.email}</span>
-                  <button onClick={() => setStep('details')} className="text-xs text-sabana-blue font-bold underline">Editar</button>
-                </div>
-                <div className="border-t border-gray-200/60 pt-3 flex justify-between items-center">
-                  <span className="text-gray-400 font-medium w-20">Enviar a</span>
-                  <span className="flex-1 truncate text-sabana-blue font-medium">{formData.address}, {formData.city}</span>
-                  <button onClick={() => setStep('details')} className="text-xs text-sabana-blue font-bold underline">Editar</button>
-                </div>
-              </div>
-
-              <h3 className="text-base font-bold text-sabana-blue mb-4">Método de envío</h3>
-              <div className="border-2 border-sabana-blue bg-sabana-light/40 rounded-xl p-4 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                  <input type="radio" checked readOnly className="text-sabana-blue h-4 w-4" />
-                  <span className="text-sm font-bold text-sabana-blue">Entrega en La Sabana</span>
-                </div>
-                <span className="text-sm font-bold text-slate-800">Gratis</span>
-              </div>
-
-              <div className="flex justify-between items-center mt-12 border-t pt-4">
-                <button onClick={() => setStep('details')} className="text-sabana-blue text-xs font-bold underline">Volver a detalles</button>
-                <button onClick={() => setStep('payment')} className="bg-sabana-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-opacity-90 active:scale-95 transition-all text-sm shadow-md">Ir al pago</button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: PAGO */}
-          {step === 'payment' && (
-            <form onSubmit={handleSubmitPayment} className="animate-in fade-in duration-300">
-              <h3 className="text-base font-bold text-sabana-blue mb-4">Método de pago</h3>
-              
-              <div 
-                onClick={() => setFormData(p => ({...p, paymentMethod: 'delivery'}))}
-                className={`border rounded-xl p-4 mb-3 flex items-center gap-3 cursor-pointer transition-all ${formData.paymentMethod === 'delivery' ? 'border-sabana-blue bg-sabana-light/30' : 'border-gray-200'}`}
-              >
-                <input type="radio" checked={formData.paymentMethod === 'delivery'} onChange={() => {}} className="text-sabana-blue" />
-                <span className="text-sm font-bold text-sabana-blue">Pago contraentrega</span>
-              </div>
-
-              <div className={`border rounded-xl overflow-hidden shadow-sm transition-all ${formData.paymentMethod === 'card' ? 'border-sabana-blue' : 'border-gray-200'}`}>
-                <div 
-                  onClick={() => setFormData(p => ({...p, paymentMethod: 'card'}))}
-                  className="bg-sabana-blue text-white p-4 flex items-center gap-3 cursor-pointer"
+              <div className="pt-4 flex justify-end">
+                <button 
+                  onClick={() => handleNextStep('shipping')}
+                  className="bg-sabana-blue text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-sabana-blue-hover active:scale-[0.98] transition-all shadow-md"
                 >
-                  <input type="radio" checked={formData.paymentMethod === 'card'} onChange={() => {}} className="text-white" />
-                  <CreditCard size={18} className="text-sabana-softGold" />
-                  <span className="text-sm font-bold tracking-wide">Tarjeta de crédito/débito</span>
-                </div>
-                
-                {formData.paymentMethod === 'card' && (
-                  <div className="p-4 bg-white space-y-3 border-t border-gray-100">
-                    <div>
-                      <input type="text" name="cardNumber" placeholder="Número de tarjeta" value={formData.cardNumber} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.cardNumber ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/20'}`} />
-                      {errors.cardNumber && <p className="text-red-500 text-[11px] font-bold mt-1 px-1">{errors.cardNumber}</p>}
-                    </div>
-                    <div>
-                      <input type="text" name="cardName" placeholder="Nombre en tarjeta" value={formData.cardName} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.cardName ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/20'}`} />
-                      {errors.cardName && <p className="text-red-500 text-[11px] font-bold mt-1 px-1">{errors.cardName}</p>}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <input type="text" name="cardExpiry" placeholder="MM/YY" value={formData.cardExpiry} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.cardExpiry ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/20'}`} />
-                        {errors.cardExpiry && <p className="text-red-500 text-[11px] font-bold mt-1 px-1">{errors.cardExpiry}</p>}
-                      </div>
-                      <div>
-                        <input type="password" name="cardCvv" placeholder="CVV" value={formData.cardCvv} onChange={handleInputChange} className={`w-full p-3 border rounded-xl text-sm focus:outline-none ${errors.cardCvv ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-sabana-light/20'}`} />
-                        {errors.cardCvv && <p className="text-red-500 text-[11px] font-bold mt-1 px-1">{errors.cardCvv}</p>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-between items-center mt-12 border-t pt-4">
-                <button type="button" onClick={() => setStep('shipping')} className="text-sabana-blue text-xs font-bold underline">Volver a envío</button>
-                <button type="submit" disabled={isSubmitting} className={`${isSubmitting ? 'bg-gray-400' : 'bg-sabana-blue'} text-white font-bold py-3.5 px-10 rounded-xl text-sm shadow-md transition-all`}>
-                  {isSubmitting ? "Procesando..." : "Finalizar Pago"}
+                  Continuar al Envío
                 </button>
               </div>
-            </form>
-          )}
-
-          {/* STEP 4: CONFIRMACIÓN */}
-          {step === 'confirmed' && (
-            <div className="text-center py-8 px-4 animate-in zoom-in flex flex-col items-center">
-              <div className="w-20 h-20 bg-sabana-light rounded-full flex items-center justify-center mb-6 shadow-inner">
-                <CheckCircle size={56} className="text-sabana-blue" />
-              </div>
-              <h2 className="text-2xl font-black text-sabana-blue mb-1">Orden confirmada</h2>
-              <p className="text-xs font-bold text-sabana-softGold bg-sabana-blue px-3 py-1 rounded-full mb-6 uppercase">ORDEN #2908</p>
-              <p className="text-slate-800 text-sm max-w-md mx-auto leading-relaxed mb-10 font-medium">¡Gracias por tu compra! El tiempo estimado de entrega en el campus es de 3 días hábiles.</p>
-              <button type="button" onClick={() => { clearCart?.(); navigate('/'); }} className="bg-sabana-blue text-white font-bold py-3.5 px-12 rounded-xl text-sm shadow-md">Volver al comercio</button>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* SECCIÓN DERECHA: RESUMEN */}
-      <div className="w-full md:w-5/12 bg-sabana-light/70 p-6 md:p-16 flex flex-col justify-between">
-        <div>
-          <h3 className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-4">Resumen de tu pedido</h3>
-          <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto divide-y divide-gray-200/60">
-            {cartItems?.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 py-3">
-                <div className="relative w-16 h-16 bg-white rounded-xl border border-gray-200 p-1.5 flex-shrink-0 shadow-sm flex items-center justify-center">
-                  <img src={item.imageUrl || logoSabana} alt={item.title} className="max-w-full max-h-full object-contain rounded-lg" />
-                  <span className="absolute -top-2 -right-2 bg-sabana-blue text-white text-[10px] font-bold w-5 h-5 rounded-full border-2 border-sabana-light flex items-center justify-center">
-                    {item.quantity || 1}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-slate-800 line-clamp-2">{item.title}</h4>
-                </div>
-                <p className="text-sm font-bold text-sabana-blue">{formatCurrency(item.price)}</p>
+          {/* PASO 2: ENVÍO (Ubicación de La Sabana Quemada Completamente) */}
+          {step === 'shipping' && (
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sabana-card space-y-6 animate-fadeIn">
+              <h2 className="text-xl font-roboto-slab font-black text-sabana-blue uppercase tracking-wider border-b border-gray-100 pb-3">
+                Punto de Entrega Autorizado
+              </h2>
+              
+              <div className="p-4 bg-sabana-light/50 border border-sabana-blue-light/40 rounded-2xl flex items-start gap-3">
+                <Truck className="text-sabana-blue mt-0.5 shrink-0" size={18} />
+                <p className="text-xs text-sabana-blue font-medium leading-relaxed">
+                  Por políticas del marketplace estudiantil, todas las entregas se realizan de forma segura y presencial dentro de las instalaciones del campus.
+                </p>
               </div>
-            ))}
-          </div>
 
-          <div className="border-t border-b border-gray-300/70 py-4 space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 font-medium">Subtotal</span>
-              <span className="font-bold text-slate-800">{formatCurrency(totalProductsPrice)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 font-medium">Envío</span>
-              <span className="text-xs text-gray-400 font-semibold">Gratis</span>
-            </div>
-          </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Lugar de Entrega</label>
+                  <input 
+                    type="text" 
+                    value="Universidad de La Sabana (Entrega Presencial en Campus)" 
+                    disabled 
+                    className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-700 rounded-2xl text-sm font-extrabold cursor-not-allowed outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Dirección del Campus</label>
+                  <input 
+                    type="text" 
+                    value={formData.address} 
+                    disabled 
+                    className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-medium cursor-not-allowed outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Ciudad</label>
+                    <input type="text" value={formData.city} disabled className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-medium cursor-not-allowed outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Departamento</label>
+                    <input type="text" value={formData.department} disabled className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-medium cursor-not-allowed outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Código Postal</label>
+                    <input type="text" value={formData.postalCode} disabled className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-medium cursor-not-allowed outline-none" />
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex justify-between items-center pt-5">
-            <span className="text-base font-bold text-slate-800">Total</span>
-            <span className="text-2xl font-black text-sabana-blue">{formatCurrency(finalTotal)}</span>
-          </div>
+              <div className="pt-4 flex justify-between">
+                <button 
+                  onClick={() => setStep('details')}
+                  className="border border-gray-200 text-gray-500 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all"
+                >
+                  Atrás
+                </button>
+                <button 
+                  onClick={() => handleNextStep('payment')}
+                  className="bg-sabana-blue text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-sabana-blue-hover active:scale-[0.98] transition-all shadow-md"
+                >
+                  Continuar al Pago
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* PASO 3: PAGO (Único Método Admitido: Contraentrega) */}
+          {step === 'payment' && (
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sabana-card space-y-6 animate-fadeIn">
+              <h2 className="text-xl font-roboto-slab font-black text-sabana-blue uppercase tracking-wider border-b border-gray-100 pb-3">
+                Método de Pago Seleccionado
+              </h2>
+              
+              <div className="p-4 rounded-2xl border-2 border-sabana-blue bg-sabana-light/20 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-sabana-blue text-white flex items-center justify-center">
+                    <CreditCard size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-sabana-blue uppercase tracking-wider">Pago Contraentrega (COD)</h3>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">Paga en efectivo o Nequi/Daviplata al recibir tu producto en la Universidad.</p>
+                  </div>
+                </div>
+                <div className="w-5 h-5 rounded-full border-4 border-sabana-blue bg-white flex items-center justify-center shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-sabana-blue" />
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-between">
+                <button 
+                  onClick={() => setStep('shipping')}
+                  className="border border-gray-200 text-gray-500 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all"
+                >
+                  Atrás
+                </button>
+                <button 
+                  onClick={handleSubmitOrder}
+                  disabled={isSubmitting}
+                  className={`bg-emerald-500 text-white px-10 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all
+                    ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-emerald-600 active:scale-[0.98]'}`}
+                >
+                  {isSubmitting ? 'Procesando...' : 'Confirmar y Finalizar'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* PASO 4: PANTALLA DE CONFIRMACIÓN */}
+          {step === 'confirmation' && (
+            <div className="bg-white p-8 rounded-3xl shadow-sabana-card text-center space-y-6 animate-scaleIn">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle size={36} />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-roboto-slab font-black text-slate-800 uppercase tracking-wide">¡Orden Confirmada con Éxito!</h2>
+                {/* Cuarto Punto: Muestra el ID numérico real retornado de tu db en memoria */}
+                <p className="text-sm text-gray-500 font-bold">
+                  Número de Orden: <span className="text-sabana-blue font-black bg-sabana-light/50 px-3 py-1 rounded-xl text-xs border border-sabana-blue-light/30">#00{realOrderId}</span>
+                </p>
+              </div>
+              
+              {/* Cuarto Punto: Mensaje modificado exactamente según lo requerido */}
+              <p className="text-sm text-gray-600 font-medium max-w-lg mx-auto leading-relaxed bg-slate-50 p-4 rounded-2xl border border-gray-100">
+                ¡Gracias por tu compra! El vendedor se comunicará contigo para los detalles de la fecha de entrega, sin embargo, tenga la certeza de que su producto será entregado en un plazo de 4 días hábiles como máximo.
+              </p>
+
+              <div className="pt-4">
+                <button 
+                  onClick={() => navigate('/publicshowcase')}
+                  className="bg-sabana-blue text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-sabana-blue-hover transition-all shadow-md"
+                >
+                  Volver al Catálogo Principal
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
+
+        {/* BLOQUE DERECHO: RESUMEN DE LA COMPRA (4 Columnas) */}
+        {step !== 'confirmation' && (
+          <div className="lg:col-span-4 space-y-6 animate-fadeIn">
+            <div className="bg-white p-6 rounded-3xl shadow-sabana-card space-y-6 sticky top-24">
+              <h3 className="text-base font-roboto-slab font-black text-sabana-blue uppercase tracking-wider border-b border-gray-100 pb-3 flex items-center gap-2">
+                <ShoppingCart size={18} /> Resumen del Carrito
+              </h3>
+
+              {/* LISTADO DE ARTÍCULOS */}
+              <div className="space-y-4 max-h-60 overflow-y-auto pr-1">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3.5 bg-slate-50 p-2.5 rounded-2xl border border-gray-100/50">
+                    
+                    
+                    <div className="relative shrink-0">
+                      
+                     
+                      <div className="bg-white w-14 h-14 rounded-xl border border-gray-200/60 overflow-hidden flex items-center justify-center">
+                        <img 
+                          src={item.imageUrl && item.imageUrl.trim() !== "" ? item.imageUrl : logoSabana} 
+                          alt={item.title} 
+                          className="w-full h-full object-cover" 
+                          onError={(e) => {
+                            e.target.onerror = null; 
+                            e.target.src = logoSabana;
+                          }}
+                        />
+                      </div>
+
+                      
+                      <span className="absolute -top-1.5 -right-1.5 bg-sabana-blue text-white text-[10px] font-black w-5 h-5 rounded-full border-2 border-white flex items-center justify-center shadow-sm z-10">
+                        {item.quantity || 1}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-black text-slate-800 line-clamp-2 uppercase tracking-tight">{item.title}</h4>
+                      <p className="text-[11px] text-gray-400 font-bold mt-0.5">{formatCurrency(item.price)} c/u</p>
+                    </div>
+                    <p className="text-xs font-black text-sabana-blue shrink-0">{formatCurrency(item.price * item.quantity)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* DESGLOSE DE COSTOS */}
+              <div className="border-t border-b border-gray-100 py-4 space-y-3">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400 font-black uppercase tracking-wider">Subtotal Productos</span>
+                  <span className="font-extrabold text-slate-800">{formatCurrency(totalProductsPrice)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400 font-black uppercase tracking-wider">Costo de Envío</span>
+                  <span className="text-xs text-emerald-500 font-black uppercase tracking-widest">Gratis (En Campus)</span>
+                </div>
+              </div>
+
+              {/* TOTAL AJUSTADO A CONTRAENTREGA */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs font-black text-sabana-blue uppercase tracking-widest">Monto a pagar contra entrega</span>
+                  <span className="text-xl font-black text-slate-900 tracking-tight">{formatCurrency(totalProductsPrice)}</span>
+                </div>
+                <p className="text-[10px] text-right text-gray-400 font-bold">
+                  * No se requiere transacciones digitales previas.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

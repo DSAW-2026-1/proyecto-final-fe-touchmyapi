@@ -44,6 +44,7 @@ function App() {
               <Route path="/password" element={<ChangePassword />} />
               <Route path="/PersonalInventory" element={<PersonalInventory />} />
               <Route path="/create-product" element={<CreateProduct />} />
+              <Route path="/cart-page" element={<CartPage />} />
 
               <Route 
                 path="/admin-control" 

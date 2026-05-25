@@ -225,7 +225,7 @@ const UserProfile = () => {
                         <p className="text-[10px] text-gray-400 font-medium mt-1">Destino: Universidad de la Sabana</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Pagado</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total a Pagar Contraentrega</p>
                         <p className="text-base font-black text-sabana-blue">${order.totalAmount?.toLocaleString('es-CO')}</p>
                       </div>
                     </div>
@@ -236,7 +236,7 @@ const UserProfile = () => {
                         <div key={idx} className="flex justify-between text-xs font-medium text-gray-600 bg-white p-2 rounded-xl border border-gray-50">
                           <span>
                             {item.title || `Artículo ID: ${item.productId}`}{' '}
-                            <span className="text-gray-400 font-bold">(x{item.quantity})</span>
+                            <span className="text-gray-400 font-bold">({item.price} x {item.quantity})</span>
                           </span>
                           
                           <span className="font-bold text-gray-700">

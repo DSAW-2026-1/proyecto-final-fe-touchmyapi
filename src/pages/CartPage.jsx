@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, User, ShoppingCart, Phone, Mail, LogOut } from 'lucide-react';
+import { Search, Bell, User, ShoppingCart, Phone, Mail, Trash2, ArrowRight, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import { useCart } from '../context/CartContext';
@@ -8,15 +8,11 @@ import { useCart } from '../context/CartContext';
 const CartPage = () => {
   const navigate = useNavigate();
   
-  // NUEVA FUNCIÓN updateQuantity DEL CONTEXTO
-  const { cartItems, updateQuantity, getCartCount, getCartTotalPrice, removeFromCart } = useCart();
+  // Agregamos clearCart desde tu contexto para la nueva funcionalidad
+  const { cartItems = [], updateQuantity, getCartCount, getCartTotalPrice, removeFromCart, clearCart } = useCart();
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(value);
+    return `$${Number(value).toLocaleString('es-CO')}`;
   };
 
   const handleLogout = () => {
@@ -31,225 +27,222 @@ const CartPage = () => {
     }
   }, [isLoggedIn, navigate]);
 
-  
   const handleDecreaseQuantity = (item) => {
     updateQuantity(item.id, item.quantity - 1, item.stock);
   };
 
-  
   const handleIncreaseQuantity = (item) => {
     updateQuantity(item.id, item.quantity + 1, item.stock);
   };
 
   return (
-    <div className="min-h-screen bg-sabana-light font-sans antialiased flex flex-col justify-between">
+    <div className="min-h-screen bg-sabana-light font-roboto flex flex-col">
       
-      {/* NAVBAR */}
-      <header className="bg-sabana-blue px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="bg-sabana-light p-1.5 rounded-xl shadow-sm">
-            <img src={logoSabana} alt="Logo Sabana" className="h-8 w-auto object-contain" />
-          </div>
-          <span className="hidden lg:block text-white font-bold tracking-tight">Marketplace Unisabana</span>
+      {/* HEADER INSTITUCIONAL ESTILO CHECKOUT */}
+      <header className="bg-sabana-blue text-white py-4 px-6 sticky top-0 z-50 shadow-md flex items-center justify-between">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/publicshowcase')}>
+          <img src={logoSabana} alt="Logo Sabana" className="h-10 w-auto bg-white p-1 rounded-lg" />
+          <h1 className="text-xl font-roboto-slab font-black uppercase tracking-wider">Marketplace Sabana</h1>
         </div>
         
-        <div className="flex-1 max-w-2xl mx-8">
-          <div className="relative group">
-            <input 
-              type="text" 
-              placeholder="¿Qué estás buscando hoy?" 
-              className="w-full py-2.5 px-12 rounded-2xl bg-white/10 text-white placeholder:text-white/60 focus:bg-sabana-light focus:text-sabana-blue focus:outline-none transition-all shadow-inner text-sm"
-              disabled
-            />
-            <Search className="absolute left-4 top-2.5 text-white/50 w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-5 text-white">
-          <div className="relative cursor-pointer hover:text-sabana-softGold transition-colors">
-            <Bell size={22} />
-            <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
-          </div>
-
-          <div 
-            onClick={() => navigate('/cart')}
-            className="relative cursor-pointer group"
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate('/publicshowcase')}
+            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-sabana-blue-light bg-white/5 border border-white/20 hover:bg-white/10 hover:text-white px-4 py-2 rounded-xl transition-all"
           >
-            <ShoppingCart size={22} className="text-sabana-softGold" />
-            {getCartCount() > 0 && (
-              <span className="absolute -top-2 -right-2 bg-sabana-softGold text-sabana-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-sabana-blue">
-                {getCartCount()}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 border-l border-white/20 pl-5">
-            <div 
-              onClick={() => navigate(isLoggedIn ? '/inventory' : '/login')}
-              className="flex items-center gap-2 cursor-pointer hover:text-sabana-softGold transition-colors"
-            >
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                <User size={18} />
-              </div>
-              <span className="hidden sm:block text-xs font-bold uppercase tracking-wider">
-                {isLoggedIn ? 'Mi Inventario' : 'Mi Cuenta'}
-              </span>
-            </div>
-
-            {isLoggedIn && (
-              <button
-                onClick={handleLogout}
-                className="ml-2 p-2 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all duration-300"
-                title="Cerrar Sesión"
-              >
-                <LogOut size={18} />
-              </button>
-            )}
-          </div>
+            <ArrowLeft size={14} /> Seguir Comprando
+          </button>
         </div>
       </header>
 
-      {/* CUERPO CENTRAL */}
-      <main className="flex-1 container mx-auto max-w-5xl px-6 py-12">
-        <h1 className="text-center text-2xl font-semibold text-[#1E293B] mb-2 tracking-tight">
-          Tu carrito de compras
-        </h1>
+      {/* CUERPO PRINCIPAL */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8">
         
-        <div className="text-center mb-10">
-          <button 
-            onClick={() => navigate('/')} 
-            className="text-xs text-sabana-blue underline hover:text-opacity-80 font-medium transition-colors"
-          >
-            Volver al comercio
-          </button>
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-roboto-slab font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
+              <ShoppingCart className="text-sabana-blue" size={26} /> Tu Carrito de Compras
+            </h2>
+            <p className="text-xs text-gray-500 font-bold mt-1">
+              Tienes {getCartCount()} {getCartCount() === 1 ? 'artículo seleccionado' : 'artículos seleccionados'}
+            </p>
+          </div>
+
+          {/* BOTÓN VACIAR CARRITO (Añadido por requerimiento) */}
+          {cartItems.length > 0 && (
+            <button
+              onClick={() => {
+                if(window.confirm('¿Estás seguro de que quieres vaciar por completo tu carrito?')) {
+                  clearCart();
+                }
+              }}
+              className="flex items-center justify-center gap-2 text-xs font-black text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 active:scale-[0.98] px-4 py-2.5 rounded-2xl transition-all shadow-sm shrink-0 uppercase tracking-widest"
+            >
+              <Trash2 size={15} /> Vaciar Carrito
+            </button>
+          )}
         </div>
 
         {cartItems.length === 0 ? (
-          <div className="bg-sabana-light rounded-3xl p-12 text-center shadow-sm border border-gray-100">
-            <p className="text-gray-500 text-lg font-medium mb-4">Tu carrito está vacío actualmente.</p>
+          /* ESTADO CARRITO VACÍO RE-ESTILIZADO */
+          <div className="bg-white p-12 rounded-3xl shadow-sabana-card text-center max-w-lg mx-auto space-y-5 animate-scaleIn">
+            <div className="w-16 h-16 bg-sabana-light text-sabana-blue rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+              <ShoppingBag size={32} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-roboto-slab font-black text-slate-800 uppercase tracking-wider">Tu carrito está vacío</h3>
+              <p className="text-xs text-gray-500 font-medium">Parece que aún no has agregado ningún producto del catálogo de la U.</p>
+            </div>
             <button 
-              onClick={() => navigate('/')}
-              className="bg-sabana-blue text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all"
+              onClick={() => navigate('/publicshowcase')}
+              className="bg-sabana-blue text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-sabana-blue-hover transition-all shadow-md inline-flex items-center gap-2"
             >
-              Explorar Productos
+              Explorar Catálogo <ArrowRight size={14} />
             </button>
           </div>
         ) : (
-          <div>
-            {/* TABLA DE PRODUCTOS */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-200 text-[11px] font-bold tracking-wider text-gray-400 uppercase">
-                    <th className="pb-4 w-[50%]">Producto</th>
-                    <th className="pb-4 text-center">Precio</th>
-                    <th className="pb-4 text-center">Cantidad</th>
-                    <th className="pb-4 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {cartItems.map((item) => (
-                    <tr key={item.id} className="align-middle">
-                      {/* Producto */}
-                      <td className="py-6 flex items-center gap-5">
-                        <div className="w-24 h-24 rounded-2xl overflow-hidden bg-sabana-light border border-gray-100 p-2 flex items-center justify-center shadow-sm">
-                          <img 
-                            src={item.imageUrl || logoSabana} 
-                            alt={item.title} 
-                            className="max-w-full max-h-full object-contain rounded-lg"
-                            onError={(e) => { e.target.src = logoSabana; }}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <h3 className="font-bold text-[#1E293B] text-base">{item.title}</h3>
-                          <button 
-                            onClick={() => removeFromCart(item.id)}
-                            className="text-xs text-red-500 hover:text-red-700 underline text-left font-medium transition-colors w-fit"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </td>
+          /* GRILLA CON DOS COLUMNAS AL ESTILO CHECKOUT */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* COLUMNA IZQUIERDA: LISTADO DE PRODUCTOS (8 Columnas) */}
+            <div className="lg:col-span-8 space-y-4">
+              {cartItems.map((item) => (
+                <div 
+                  key={item.id} 
+                  className="bg-white p-4 rounded-3xl shadow-sabana-card border border-gray-100/40 flex flex-col sm:flex-row items-center gap-4 transition-all hover:border-sabana-blue-light/30 animate-fadeIn"
+                >
+                  {/* Imagen Estilizada */}
+                  <div className="w-24 h-24 bg-slate-50 rounded-2xl border border-gray-200/50 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+                    <img 
+                      src={item.imageUrl && item.imageUrl.trim() !== '' ? item.imageUrl : logoSabana} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
 
-                      {/* Precio */}
-                      <td className="py-6 text-center font-semibold text-[#1E293B] text-sm">
-                        {formatCurrency(item.price)}
-                      </td>
+                  {/* Detalles Informativos */}
+                  <div className="flex-1 text-center sm:text-left min-w-0 space-y-1">
+                    <span className="text-[10px] bg-sabana-light text-sabana-blue px-2.5 py-0.5 rounded-md font-black uppercase tracking-wider">
+                      {item.category || 'Producto'}
+                    </span>
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight line-clamp-1">{item.title}</h3>
+                    <p className="text-xs font-bold text-sabana-blue">{formatCurrency(item.price)} <span className="text-gray-400 font-medium">c/u</span></p>
+                  </div>
 
-                      {/* Selector de cantidad [+ 1 -] Modificado */}
-                      <td className="py-6 text-center">
-                        <div className="inline-flex items-center justify-between border border-gray-300 rounded-md bg-sabana-light px-2 py-1 text-sm shadow-sm gap-3 select-none">
-                          <button 
-                            onClick={() => handleDecreaseQuantity(item)}
-                            className="text-gray-400 hover:text-gray-600 font-bold px-1 transition-colors"
-                          >
-                            -
-                          </button>
-                          <span className="font-semibold text-[#1E293B] min-w-[12px]">
-                            {item.quantity || 1}
-                          </span>
-                          <button 
-                            onClick={() => handleIncreaseQuantity(item)}
-                            className="text-gray-400 hover:text-gray-600 font-bold px-1 transition-colors"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
+                  {/* Controles de Cantidad y Eliminación */}
+                  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
+                    {/* Botonera +/- */}
+                    <div className="flex items-center bg-slate-50 p-1.5 rounded-xl border border-gray-200/40 shadow-sm">
+                      <button 
+                        onClick={() => handleDecreaseQuantity(item)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-gray-500 hover:bg-gray-200 active:scale-95 transition-all"
+                      >
+                        -
+                      </button>
+                      <span className="w-10 text-center text-xs font-black text-slate-800">{item.quantity}</span>
+                      <button 
+                        onClick={() => handleIncreaseQuantity(item)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-gray-500 hover:bg-gray-200 active:scale-95 transition-all"
+                      >
+                        +
+                      </button>
+                    </div>
 
-                      {/* Total */}
-                      <td className="py-6 text-right font-bold text-[#1E293B] text-sm">
-                        {formatCurrency((item.price || 0) * (item.quantity || 1))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    {/* Subtotal del Item */}
+                    <div className="text-right min-w-[80px]">
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider text-[9px]">Subtotal</p>
+                      <p className="text-sm font-black text-slate-800 tracking-tight">{formatCurrency(item.price * item.quantity)}</p>
+                    </div>
+
+                    {/* Tacho de Basura */}
+                    <button 
+                      onClick={() => removeFromCart(item.id)}
+                      className="text-gray-400 hover:text-rose-500 p-2 rounded-xl hover:bg-rose-50 transition-colors shrink-0"
+                      title="Eliminar del carrito"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* SECCIÓN TOTALES Y CHECKOUT */}
-            <div className="mt-8 flex flex-col items-end gap-2 border-t border-gray-200 pt-6">
-              <div className="flex items-center gap-12 text-sm">
-                <span className="font-bold text-[#1E293B] text-base">Subtotal</span>
-                <span className="font-bold text-[#1E293B] text-base">{formatCurrency(getCartTotalPrice())}</span>
+            {/* COLUMNA DERECHA: RESUMEN FINANCIERO (4 Columnas) */}
+            <div className="lg:col-span-4">
+              <div className="bg-white p-6 rounded-3xl shadow-sabana-card space-y-6 sticky top-24 border border-gray-100/50">
+                <h3 className="text-base font-roboto-slab font-black text-sabana-blue uppercase tracking-wider border-b border-gray-100 pb-3 flex items-center gap-2">
+                  Resumen de la Orden
+                </h3>
+
+                <div className="space-y-3.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400 font-black uppercase tracking-wider">Total Artículos</span>
+                    <span className="font-extrabold text-slate-800">{getCartCount()}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400 font-black uppercase tracking-wider">Subtotal Compra</span>
+                    <span className="font-extrabold text-slate-800">{formatCurrency(getCartTotalPrice())}</span>
+                  </div>
+                  <div className="flex justify-between text-xs items-center">
+                    <span className="text-gray-400 font-black uppercase tracking-wider">Entrega en Campus</span>
+                    <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Gratis</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4 space-y-1">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs font-black text-sabana-blue uppercase tracking-widest">Total Estimado</span>
+                    <span className="text-xl font-black text-slate-900 tracking-tight">{formatCurrency(getCartTotalPrice())}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-400 font-bold leading-tight">
+                    * El pago definitivo se coordinará contra entrega en efectivo o transferencia.
+                  </p>
+                </div>
+
+                {/* BOTÓN PRINCIPAL DE CHECKOUT */}
+                <button 
+                  onClick={() => navigate('/checkout')}
+                  className="w-full bg-sabana-blue text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-sabana-blue-hover active:scale-[0.98] transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  Proceder al Pago <ArrowRight size={14} />
+                </button>
               </div>
-              <p className="text-[11px] text-gray-400 font-medium">
-                El costo del envío se calcula en la pantalla de envío
-              </p>
-              <button 
-                onClick={() => navigate('/checkout')}
-                className="mt-4 bg-[#002D72] text-white px-10 py-3 rounded-lg font-bold text-sm hover:bg-opacity-90 active:scale-95 transition-all shadow-md tracking-wide"
-              >
-                Check-out
-              </button>
             </div>
+
           </div>
         )}
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-sabana-blue text-white pt-12 pb-8 w-full mt-auto">
-        <div className="container mx-auto max-w-5xl px-6 flex flex-col items-center">
-          <div className="w-full h-[1px] bg-white/20 mb-10"></div>
+      {/* FOOTER INSTITUCIONAL */}
+      <footer className="bg-sabana-blue text-white pt-12 pb-6 px-6 mt-12 border-t-4 border-sabana-blue-hover">
+        <div className="max-w-5xl mx-auto flex flex-col items-center">
           <div className="text-center max-w-xl mx-auto mb-8 flex flex-col items-center">
-            <img src={logoSabana} alt="Escudo Unisabana" className="h-20 w-auto object-contain bg-sabana-light p-3 rounded-2xl mb-5 shadow-md" />
-            <h2 className="text-xl font-semibold mb-6 tracking-tight leading-snug">
-              ¿Quieres publicar tus productos en nuestra página?<br />¡Contáctanos!
+            <img src={logoSabana} alt="Escudo Unisabana" className="h-16 w-auto object-contain bg-white p-2 rounded-2xl mb-4 shadow-md" />
+            <h2 className="text-base font-roboto-slab font-black uppercase tracking-wide mb-2 text-sabana-blue-light">
+              Marketplace Unisabana Estudiantil
             </h2>
-            <div className="flex justify-center items-center gap-8">
-              <a href="#" className="text-white hover:text-sabana-softGold transition-colors" title="Instagram">
-                <FaInstagram size={28} />
-              </a>
-              <a href="#" className="text-white hover:text-sabana-softGold transition-colors" title="Teléfono">
-                <Phone size={28} />
-              </a>
-              <a href="#" className="text-white hover:text-sabana-softGold transition-colors" title="Correo Electrónico">
-                <Mail size={28} />
-              </a>
-            </div>
+            <p className="text-xs text-white/70 font-medium">
+              ¿Quieres publicar tus productos o tienes sugerencias del sistema? ¡Escríbenos por nuestros canales oficiales!
+            </p>
           </div>
-          <div className="w-full text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.25em] border-t border-white/10 pt-6 mt-4">
-            Personas que inspiran personas - Marketplace Unisabana
+          
+          <div className="flex justify-center items-center gap-6 mb-8">
+            {[
+              { icon: FaInstagram, title: "Instagram" },
+              { icon: Phone, title: "Teléfono" },
+              { icon: Mail, title: "Correo Electrónico" }
+            ].map((social, idx) => {
+              const IconComp = social.icon;
+              return (
+                <div key={idx} className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white hover:text-sabana-blue transition-all cursor-pointer shadow-sm" title={social.title}>
+                  <IconComp size={20} />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="w-full text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.25em] border-t border-white/5 pt-6">
+            Personas que inspiran personas — Universidad de La Sabana
           </div>
         </div>
       </footer>
