@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut, Star, UserCheck, ShieldAlert } from 'lucide-react';
-=======
-// MODIFICADO: Añadimos MessageSquare para el botón de chat
-import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut, MessageSquare } from 'lucide-react';
->>>>>>> chat
+// CONFIGURACIÓN UNIFICADA: Se combinan los iconos de ambas ramas (Star, UserCheck, ShieldAlert de uno; MessageSquare del otro)
+import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut, Star, UserCheck, ShieldAlert, MessageSquare } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
@@ -22,7 +18,7 @@ const PublicShowcase = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   
-  // AÑADIDOS: Estados para controlar el modal flotante del primer mensaje
+  // MANTENIDO: Estados para controlar el modal flotante del primer mensaje (Rama: chat)
   const [showContactModal, setShowContactModal] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
   
@@ -143,19 +139,11 @@ const PublicShowcase = () => {
       navigate('/login');
       return;
     }
-<<<<<<< HEAD
-    addToCart(product);
-  };
-
-  // =================================================================
-  // COMPONENTE MODAL DE DETALLE DE PRODUCTO (CON RESEÑAS Y SCROLL)
-  // =================================================================
-=======
     
     addToCart(product);
   };
 
-  // AÑADIDO: Validación y redirección del botón de Chat del Navbar
+  // MANTENIDO: Validación y redirección del botón de Chat del Navbar (Rama: chat)
   const handleChatNavigation = () => {
     if (!isLoggedIn) {
       alert("¡Hola! Para ver tus chats debes iniciar sesión con tu cuenta Sabana.");
@@ -165,7 +153,7 @@ const PublicShowcase = () => {
     navigate('/chat');
   };
 
-  // AÑADIDO: Lógica mockeada para registrar el primer mensaje e iniciar la estructura del chat en LocalStorage
+  // MANTENIDO: Lógica para registrar el primer mensaje en LocalStorage (Rama: chat)
   const handleSendFirstMessage = (e) => {
     e.preventDefault();
     if (!firstMessage.trim()) return;
@@ -179,7 +167,6 @@ const PublicShowcase = () => {
     const sellerEmail = selectedProduct.ownerEmail || "";
     const sellerId = selectedProduct.user?.id || selectedProduct.sellerId || selectedProduct.userId || "";
 
-    // Estructurar base de datos simulada local
     const localChats = JSON.parse(localStorage.getItem('mock_chats') || '[]');
     const chatId = `chat_${Date.now()}`;
 
@@ -212,8 +199,7 @@ const PublicShowcase = () => {
     setSelectedProduct(null); // Cierra de igual forma el detalle del producto de manera limpia
   };
 
-  // Componente Modal de Detalle de Producto
->>>>>>> chat
+  // Componente Modal de Detalle de Producto Unificado
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
     
@@ -289,26 +275,16 @@ const PublicShowcase = () => {
                 {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
               </p>
             </div>
-<<<<<<< HEAD
 
-            {/* Bloque de compra instantánea */}
+            {/* UNIFICACIÓN DE BLOQUE COMERCIAL: Mantiene el diseño estético agregando el botón de "Contactar" de tu rama */}
             <div className="bg-slate-50/80 border border-gray-100 p-4 rounded-2xl flex flex-col gap-3">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
-                <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
-=======
-            <h2 className="text-2xl font-black text-sabana-blue mb-3">{product.title}</h2>
-            <p className="text-gray-600 text-sm mb-6 leading-relaxed">
-              {product.description || "Este producto es ofrecido por un miembro de la comunidad Sabana."}
-            </p>
-            <div className="mt-auto flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase">Precio</p>
                   <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
                 </div>
                 
-                {/* AÑADIDO: Botón Contactar visible para compradores, dispara el sub-modal */}
+                {/* Agregado: Botón de contactar dinámico para iniciar chat */}
                 {!isOwner && (
                   <button 
                     onClick={() => {
@@ -324,7 +300,6 @@ const PublicShowcase = () => {
                     Contactar
                   </button>
                 )}
->>>>>>> chat
               </div>
               
               <button 
@@ -341,7 +316,7 @@ const PublicShowcase = () => {
               </button>
             </div>
 
-            {/* SECCIÓN NUEVA: Información Comercial del Vendedor */}
+            {/* SECCIÓN COMPAÑERO: Información Comercial del Vendedor */}
             <div className="border-t border-gray-100 pt-5 space-y-3">
               <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest flex items-center gap-1.5">
                 <UserCheck size={16} className="text-sabana-blue-light" /> Información del Vendedor
@@ -355,7 +330,7 @@ const PublicShowcase = () => {
               </div>
             </div>
 
-            {/* SECCIÓN NUEVA: Calificaciones y Reseñas con Scroll */}
+            {/* SECCIÓN COMPAÑERO: Calificaciones y Reseñas con Scroll */}
             <div className="border-t border-gray-100 pt-5 space-y-4">
               <div className="flex justify-between items-baseline">
                 <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest">
@@ -368,7 +343,6 @@ const PublicShowcase = () => {
                 <p className="text-xs text-gray-400 italic">Cargando reputación...</p>
               ) : (
                 <>
-                  {/* Lógica del Promedio: < 10 vs >= 10 */}
                   {reviewData.count < 10 ? (
                     <div className="flex items-start gap-3 bg-amber-50/60 border border-amber-200/60 p-4 rounded-2xl">
                       <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
@@ -496,7 +470,7 @@ const PublicShowcase = () => {
             <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
           </div>
 
-          {/* AÑADIDO: Botón de chats al lado del carrito de compras */}
+          {/* MANTENIDO: Botón de chats en el Navbar */}
           <div 
             onClick={handleChatNavigation} 
             className="relative cursor-pointer group" 
@@ -782,7 +756,7 @@ const PublicShowcase = () => {
               <p className="text-xs text-white/40 font-bold">© 2026 Universidad de La Sabana</p>
             </div>
           </div>
-          <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.3em]\">
+          <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.3em]">
             Personas que inspiran personas - Marketplace
           </div>
         </div>
@@ -790,7 +764,7 @@ const PublicShowcase = () => {
 
       <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
 
-      {/* AÑADIDO: Formulario submodal flotante para la redacción del mensaje inicial */}
+      {/* MANTENIDO: Formulario submodal flotante para la redacción del mensaje inicial */}
       {showContactModal && selectedProduct && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
