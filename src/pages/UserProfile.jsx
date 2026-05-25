@@ -1,12 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Settings, ArrowLeft, Store, Clock, X, ShoppingBag, Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const UserProfile = () => {
   const navigate = useNavigate();
-  const { user, isLoggedIn } = useAuth();
+  const { user: authUser, isLoggedIn: authIsLoggedIn } = useAuth();
   const apiUrl = import.meta.env.VITE_API_URL;
+
+  // Recuperar usuario de manera más robusta si el contexto falla al inicio
+  const user = useMemo(() => {
+    if (authUser) return authUser;
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  }, [authUser]);
+
+  const isLoggedIn = authIsLoggedIn || !!localStorage.getItem('isLoggedIn');
 
   // Estados para controlar los modales
   const [showMgmtModal, setShowMgmtModal] = useState(false);
@@ -16,6 +25,7 @@ const UserProfile = () => {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
+<<<<<<< HEAD
   // Estados para el formulario de reseña activa
   const [activeReviewProd, setActiveReviewProd] = useState(null); // Guarda { orderId, productId, sellerEmail }
   const [rating, setRating] = useState(5);
@@ -23,13 +33,15 @@ const UserProfile = () => {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   // Protección de ruta: Si no hay sesión o usuario, redirigir al login
+=======
+  // Protección de ruta
+>>>>>>> chat
   useEffect(() => {
     if (!isLoggedIn || !user || !user.email) {
       navigate('/login');
     }
   }, [isLoggedIn, user, navigate]);
 
-  // Cargar el historial de órdenes cuando se abre el visor de historial
   const fetchPurchaseHistory = async () => {
     if (!user?.email) return;
     setLoadingOrders(true);
@@ -46,6 +58,7 @@ const UserProfile = () => {
     }
   };
 
+<<<<<<< HEAD
   const handleSendReview = async (e) => {
     e.preventDefault();
     if (!comment.trim()) return alert("Por favor escribe un comentario para tu reseña.");
@@ -80,8 +93,10 @@ const UserProfile = () => {
   };
 
   if (!isLoggedIn || !user || !user.email) return null;
+=======
+  if (!isLoggedIn || !user) return null;
+>>>>>>> chat
 
-  // Evaluamos el estado del rol compuesto del estudiante
   const isSellerOrAdmin = user.role === 'SELLER' || user.role === 'ADMIN';
 
   return (
@@ -98,11 +113,10 @@ const UserProfile = () => {
 
       <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm overflow-hidden">
         {/* Banner Superior */}
-        <div className="bg-sabana-blue p-8 text-default-white relative">
+        <div className="bg-sabana-blue p-8 text-white relative">
           <div className="flex flex-col md:flex-row gap-6 items-center z-10 relative">
             <div className="w-24 h-24 rounded-full bg-sabana-softGold/20 border-2 border-sabana-softGold flex items-center justify-center font-black text-3xl text-sabana-softGold uppercase">
-              {user.name?.[0]}
-              {user.lastName?.[0]}
+              {user.name?.[0]}{user.lastName?.[0]}
             </div>
             <div className="text-center md:text-left">
               <h1 className="text-3xl font-black tracking-tight uppercase">
@@ -119,21 +133,28 @@ const UserProfile = () => {
         {/* Contenido del Perfil */}
         <div className="p-8">
           <h2 className="text-xl font-bold text-sabana-blue mb-6">Mi Cuenta</h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+<<<<<<< HEAD
             <div 
               onClick={() => setShowMgmtModal(true)}
               className="border border-sabana-blue-light/40 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue transition-all group"
             >
+=======
+            <div onClick={() => setShowMgmtModal(true)} className="border border-sabana-blue-light/40 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue transition-all group">
+>>>>>>> chat
               <ShoppingBag className="text-sabana-blue mb-4 group-hover:scale-110 transition-transform" size={32} />
               <h3 className="font-bold text-sabana-blue">Gestión de Productos</h3>
               <p className="text-sm text-gray-500">Administra tus ventas, inventario e historial de compras</p>
             </div>
+<<<<<<< HEAD
 
             <div
               onClick={() => navigate('/password')} 
               className="border border-sabana-blue-light/40 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue transition-all group"
             >
+=======
+            <div onClick={() => navigate('/password')} className="border border-sabana-blue-light/40 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue transition-all group">
+>>>>>>> chat
               <Settings className="text-sabana-blue mb-4 group-hover:rotate-90 transition-transform" size={32} />
               <h3 className="font-bold text-sabana-blue">Configuración</h3>
               <p className="text-sm text-gray-500">Cambiar contraseña y seguridad</p>
@@ -144,6 +165,7 @@ const UserProfile = () => {
 
       {/* MODAL PRINCIPAL DE GESTIÓN */}
       {showMgmtModal && (
+<<<<<<< HEAD
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 relative shadow-2xl border border-gray-100">
             <button 
@@ -206,11 +228,21 @@ const UserProfile = () => {
                 <div className="bg-sabana-blue/10 p-3 rounded-xl text-sabana-blue group-hover:rotate-12 group-hover:animate-spin-slow">
                   <Clock size={24} /> 
                 </div>
+=======
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 relative shadow-2xl">
+            <button onClick={() => setShowMgmtModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-sabana-blue transition-colors"><X size={24} /></button>
+            <h3 className="text-xl font-black text-sabana-blue uppercase tracking-tight mb-6">Panel de Operaciones</h3>
+            <div className="flex flex-col gap-4">
+              <div onClick={() => { setShowMgmtModal(false); navigate('/PersonalInventory'); }} className="flex items-center gap-4 border p-4 rounded-2xl cursor-pointer hover:border-sabana-blue transition-all">
+                <div className="bg-sabana-blue/10 p-3 rounded-xl text-sabana-blue"><Package size={24} /></div>
+>>>>>>> chat
                 <div>
-                  <h4 className="font-bold text-sabana-blue text-sm">Historial de Compras</h4>
-                  <p className="text-xs text-gray-500">Revisa los recibos y detalles de tus adquisiciones</p>
+                  <h4 className="font-bold text-sabana-blue text-sm">{isSellerOrAdmin ? 'Mi Inventario' : '¡Quiero ser vendedor!'}</h4>
+                  <p className="text-xs text-gray-500">Gestiona tus productos o activa tu rol</p>
                 </div>
               </div>
+<<<<<<< HEAD
             </div>
           </div>
         </div>
@@ -361,6 +393,21 @@ const UserProfile = () => {
           </div>
         </div>
       )}
+=======
+              <div onClick={() => { setShowMgmtModal(false); setShowHistoryModal(true); fetchPurchaseHistory(); }} className="flex items-center gap-4 border p-4 rounded-2xl cursor-pointer hover:border-sabana-blue transition-all">
+                <div className="bg-sabana-blue/10 p-3 rounded-xl text-sabana-blue"><Clock size={24} /></div>
+                <div>
+                  <h4 className="font-bold text-sabana-blue text-sm">Historial de Compras</h4>
+                  <p className="text-xs text-gray-500">Revisa tus recibos</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* (Mantén el resto de tu lógica del Modal de Historial exactamente igual) */}
+>>>>>>> chat
     </div>
   );
 };

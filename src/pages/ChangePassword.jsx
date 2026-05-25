@@ -27,6 +27,11 @@ const ChangePassword = () => {
     }
   
     try {
+      console.log("Enviando al backend:", {
+        email: userEmail,
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword
+    });
       // Realizamos la petición (agregamos el email al body como espera tu backend)
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/change-password`, {
         method: 'POST',
@@ -106,4 +111,4 @@ const ChangePassword = () => {
   );
 };
 
-export default ChangePassword; 
+export default ChangePassword; // ¡IMPORTANTE: Asegúrate de tener esta línea al final!o

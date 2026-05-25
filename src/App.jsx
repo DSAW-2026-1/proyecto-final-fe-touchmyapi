@@ -4,6 +4,7 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext'; 
 import ProtectedRoute from './components/ProtectedRoute';
 
+
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const CreateProduct = lazy(() => import('./pages/CreateProduct'));
@@ -16,7 +17,8 @@ const AdminDashboard = lazy(()=> import('./pages/AdminDashboard'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
-const ChangePassword = lazy(() => import('./pages/ChangePassword')); // CORREGIDO
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+const ChatPage = lazy(() => import('./pages/ChatPage')); 
 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-sabana-light">
@@ -42,6 +44,7 @@ function App() {
               <Route path="/home" element={<PublicShowcase />} />
               <Route path="/userprofile" element={<UserProfile />} />
               <Route path="/password" element={<ChangePassword />} />
+              <Route path="/chat" element={<ChatPage />} />
               <Route path="/PersonalInventory" element={<PersonalInventory />} />
               <Route path="/create-product" element={<CreateProduct />} />
               <Route path="/cart-page" element={<CartPage />} />
