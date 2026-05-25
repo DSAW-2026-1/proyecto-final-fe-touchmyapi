@@ -7,7 +7,6 @@ import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
 import { useCart } from '../context/CartContext'; // Hook del carrito
 import { useAuth } from '../context/AuthContext';
-import { io } from 'socket.io-client';
 
 const PublicShowcase = () => {
   const navigate = useNavigate();
@@ -23,8 +22,7 @@ const PublicShowcase = () => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
   
-
-  const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8080');
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   const CATEGORY_LABELS = {
     'ACADEMIC_SUPPLIES': 'Útiles académicos',
@@ -158,35 +156,47 @@ const PublicShowcase = () => {
   // MANTENIDO: Lógica para registrar el primer mensaje en LocalStorage (Rama: chat)
   const handleSendFirstMessage = (e) => {
     e.preventDefault();
-    
-    if (!firstMessage.trim() || !user) return;
-  
-    // Generamos un roomId único combinando el comprador y el vendedor para este producto
-    const roomId = `room_${selectedProduct.id}_${user.email.replace(/[@.]/g, '_')}`;
-  
-    const chatPayload = {
-      roomId,
+    if (!firstMessage.trim()) return;
+
+    if (!isLoggedIn) {
+      alert("¡Hola! Debes iniciar sesión con tu cuenta Sabana para enviar mensajes.");
+      navigate('/login');
+      return;
+    }
+
+    const sellerEmail = selectedProduct.ownerEmail || "";
+    const sellerId = selectedProduct.user?.id || selectedProduct.sellerId || selectedProduct.userId || "";
+
+    const localChats = JSON.parse(localStorage.getItem('mock_chats') || '[]');
+    const chatId = `chat_${Date.now()}`;
+
+    const newChatRoom = {
+      id: chatId,
       productId: selectedProduct.id,
       productTitle: selectedProduct.title,
-      productImage: selectedProduct.images?.[0] || selectedProduct.image,
-      buyerEmail: user.email,
-      sellerEmail: selectedProduct.ownerEmail || selectedProduct.sellerEmail,
-      senderEmail: user.email,
-      text: firstMessage.trim()
+      productImage: selectedProduct.imageUrl,
+      buyerId: currentUserId || 'comprador_anon',
+      buyerEmail: currentUserEmail || '',
+      sellerId: sellerId,
+      sellerEmail: sellerEmail,
+      messages: [
+        {
+          id: `msg_${Date.now()}`,
+          senderId: currentUserId || 'comprador_anon',
+          senderEmail: currentUserEmail || '',
+          text: firstMessage,
+          timestamp: new Date().toISOString()
+        }
+      ]
     };
-  
-    // 1. Unirse a la sala en caliente
-    socket.emit('join_room', roomId);
-  
-    // 2. Enviar el payload completo en tiempo real al backend
-    socket.emit('send_message', chatPayload);
-  
-    // 3. Limpiar estados y redirigir al estudiante a su pantalla de Chats
+
+    localChats.push(newChatRoom);
+    localStorage.setItem('mock_chats', JSON.stringify(localChats));
+
+    alert(`¡Mensaje enviado con éxito al vendedor! Podrás seguir respondiendo desde el botón de chats en el menú superior.`);
     setFirstMessage("");
     setShowContactModal(false);
-    
-    // Navegar a la página de chats pasando el roomId para abrirlo automáticamente
-    navigate('/chats', { state: { activeRoomId: roomId } });
+    setSelectedProduct(null); // Cierra de igual forma el detalle del producto de manera limpia
   };
 
   // Componente Modal de Detalle de Producto Unificado
@@ -230,14 +240,14 @@ const PublicShowcase = () => {
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
         
         {/* Contenedor adaptado con scroll vertical global interno para el modal */}
-        <div className="relative bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
+        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
           
           <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md">
             <X size={20} />
           </button>
           
           {/* LADO IZQUIERDO: Imagen Fija */}
-          <div className="md:w-3/4 h-72 md:h-auto bg-sabana-light md:sticky md:top-0">
+          <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light md:sticky md:top-0">
             <img 
               src={product.imageUrl || logoSabana} 
               alt={product.title}
@@ -352,12 +362,12 @@ const PublicShowcase = () => {
                         <span className="text-[10px] text-gray-400 font-bold block">de 5</span>
                       </div>
                       <div>
-                        <div className="flex gap-0.5 text-default-rating-bg">
+                        <div className="flex gap-0.5 text-sabana-softGold">
                           {Array(5).fill(0).map((_, i) => (
                             <Star 
                               key={i} 
                               size={14} 
-                              className={i < Math.round(Number(reviewData.average)) ? 'fill-default-rating-yellow text-default-rating-bg' : 'text-gray-200'} 
+                              className={i < Math.round(Number(reviewData.average)) ? 'fill-sabana-softGold text-sabana-softGold' : 'text-gray-200'} 
                             />
                           ))}
                         </div>
@@ -377,9 +387,9 @@ const PublicShowcase = () => {
                         <div key={rev.id} className="border-b border-gray-50 pb-3 last:border-0">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] font-bold text-sabana-blue/60">{rev.buyerEmail?.split('@')[0]}</span>
-                            <div className="flex text-default-rating-bg">
+                            <div className="flex text-sabana-softGold">
                               {Array(5).fill(0).map((_, i) => (
-                                <Star key={i} size={10} className={i < rev.rating ? 'fill-default-rating-yellow' : 'text-gray-200'} />
+                                <Star key={i} size={10} className={i < rev.rating ? 'fill-sabana-softGold' : 'text-gray-200'} />
                               ))}
                             </div>
                           </div>
