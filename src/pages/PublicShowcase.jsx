@@ -23,11 +23,8 @@ const PublicShowcase = () => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
   
-  // CORRECCIÓN: Definición de apiUrl requerida para las peticiones fetch
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
-  // CORRECCIÓN: Memorizar la conexión de Socket para evitar loops infinitos de reconexión
-  const socket = useMemo(() => io(apiUrl), [apiUrl]);
+  const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8080');
 
   const CATEGORY_LABELS = {
     'ACADEMIC_SUPPLIES': 'Útiles académicos',
@@ -126,6 +123,7 @@ const PublicShowcase = () => {
   const checkIfOwner = useCallback((product) => {
     if (!product) return false;
     
+    // Validación cruzada estricta por Email u ID
     if (currentUserEmail && product.ownerEmail && product.ownerEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
       return true;
     }
@@ -147,41 +145,47 @@ const PublicShowcase = () => {
     addToCart(product);
   };
 
+  // MANTENIDO: Validación y redirección del botón de Chat del Navbar (Rama: chat)
   const handleChatNavigation = () => {
     if (!isLoggedIn) {
       alert("¡Hola! Para ver tus chats debes iniciar sesión con tu cuenta Sabana.");
       navigate('/login');
       return;
     }
-    navigate('/chats');
+    navigate('/chat');
   };
 
+  // MANTENIDO: Lógica para registrar el primer mensaje en LocalStorage (Rama: chat)
   const handleSendFirstMessage = (e) => {
     e.preventDefault();
     
-    if (!firstMessage.trim() || !currentUserEmail || !selectedProduct) return;
+    if (!firstMessage.trim() || !user) return;
   
-    const buyerClean = currentUserEmail.replace(/[@.]/g, '_');
-    const roomId = `room_${selectedProduct.id}_${buyerClean}`;
+    // Generamos un roomId único combinando el comprador y el vendedor para este producto
+    const roomId = `room_${selectedProduct.id}_${user.email.replace(/[@.]/g, '_')}`;
   
     const chatPayload = {
       roomId,
       productId: selectedProduct.id,
       productTitle: selectedProduct.title,
-      productImage: selectedProduct.imageUrl || selectedProduct.image,
-      buyerEmail: currentUserEmail,
+      productImage: selectedProduct.images?.[0] || selectedProduct.image,
+      buyerEmail: user.email,
       sellerEmail: selectedProduct.ownerEmail || selectedProduct.sellerEmail,
-      senderEmail: currentUserEmail,
+      senderEmail: user.email,
       text: firstMessage.trim()
     };
   
+    // 1. Unirse a la sala en caliente
     socket.emit('join_room', roomId);
+  
+    // 2. Enviar el payload completo en tiempo real al backend
     socket.emit('send_message', chatPayload);
   
+    // 3. Limpiar estados y redirigir al estudiante a su pantalla de Chats
     setFirstMessage("");
     setShowContactModal(false);
-    setSelectedProduct(null); // Cerrar modal detalle
     
+    // Navegar a la página de chats pasando el roomId para abrirlo automáticamente
     navigate('/chats', { state: { activeRoomId: roomId } });
   };
 
@@ -190,6 +194,8 @@ const PublicShowcase = () => {
     if (!product) return null;
     
     const isOwner = checkIfOwner(product);
+
+    // Estados locales para almacenar la info asincrónica del vendedor y sus reseñas
     const [sellerStats, setSellerStats] = useState({ fullName: "Cargando...", totalSales: 0 });
     const [reviewData, setReviewData] = useState({ reviews: [], count: 0, average: null });
     const [loadingMetadata, setLoadingMetadata] = useState(true);
@@ -199,9 +205,11 @@ const PublicShowcase = () => {
 
       const fetchMetadata = async () => {
         try {
+          // 1. Traer estadísticas del vendedor
           const statsRes = await fetch(`${apiUrl}/api/v1/reviews/seller-stats/${product.ownerEmail}`);
           const statsData = statsRes.ok ? await statsRes.json() : { fullName: "Miembro Sabana", totalSales: 0 };
           
+          // 2. Traer reseñas del producto
           const reviewRes = await fetch(`${apiUrl}/api/v1/reviews/product/${product.id}`);
           const revData = reviewRes.ok ? await reviewRes.json() : { reviews: [], count: 0, average: null };
 
@@ -221,12 +229,14 @@ const PublicShowcase = () => {
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
         
+        {/* Contenedor adaptado con scroll vertical global interno para el modal */}
         <div className="relative bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
           
           <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md">
             <X size={20} />
           </button>
           
+          {/* LADO IZQUIERDO: Imagen Fija */}
           <div className="md:w-3/4 h-72 md:h-auto bg-sabana-light md:sticky md:top-0">
             <img 
               src={product.imageUrl || logoSabana} 
@@ -236,6 +246,7 @@ const PublicShowcase = () => {
             />
           </div>
           
+          {/* LADO DERECHO: Toda la información con scroll natural hacia abajo */}
           <div className="p-8 md:w-1/2 flex flex-col space-y-6">
             <div>
               <div className="flex gap-2 mb-3">
@@ -255,6 +266,7 @@ const PublicShowcase = () => {
               </p>
             </div>
 
+            {/* UNIFICACIÓN DE BLOQUE COMERCIAL: Mantiene el diseño estético agregando el botón de "Contactar" de tu rama */}
             <div className="bg-slate-50/80 border border-gray-100 p-4 rounded-2xl flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -262,6 +274,7 @@ const PublicShowcase = () => {
                   <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
                 </div>
                 
+                {/* Agregado: Botón de contactar dinámico para iniciar chat */}
                 {!isOwner && (
                   <button 
                     onClick={() => {
@@ -293,6 +306,7 @@ const PublicShowcase = () => {
               </button>
             </div>
 
+            {/* SECCIÓN COMPAÑERO: Información Comercial del Vendedor */}
             <div className="border-t border-gray-100 pt-5 space-y-3">
               <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest flex items-center gap-1.5">
                 <UserCheck size={16} className="text-sabana-blue-light" /> Información del Vendedor
@@ -306,6 +320,7 @@ const PublicShowcase = () => {
               </div>
             </div>
 
+            {/* SECCIÓN COMPAÑERO: Calificaciones y Reseñas con Scroll */}
             <div className="border-t border-gray-100 pt-5 space-y-4">
               <div className="flex justify-between items-baseline">
                 <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest">
@@ -323,7 +338,7 @@ const PublicShowcase = () => {
                       <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
                       <div>
                         <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white px-2 py-0.5 rounded-md">
-                          Vendedor Nuevo
+                          Comprador Nuevo
                         </span>
                         <p className="text-xs text-amber-900 font-medium mt-1.5 leading-snug">
                           Este vendedor aún no acumula las 10 calificaciones requeridas para calcular un promedio oficial en el campus.
@@ -332,17 +347,17 @@ const PublicShowcase = () => {
                     </div>
                   ) : (
                     <div className="flex items-center gap-3 bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl">
-                      <div className="bg-white px-3 py-2 rounded-xl border border-emerald-100 text-center shadow-sm">
+                      <div className="bg-white px-3 py-2 rounded-xl border border-emerald-100 text-center shadow-xs">
                         <span className="text-2xl font-black text-slate-800">{reviewData.average}</span>
                         <span className="text-[10px] text-gray-400 font-bold block">de 5</span>
                       </div>
                       <div>
-                        <div className="flex gap-0.5 text-yellow-500">
+                        <div className="flex gap-0.5 text-default-rating-bg">
                           {Array(5).fill(0).map((_, i) => (
                             <Star 
                               key={i} 
                               size={14} 
-                              className={i < Math.round(Number(reviewData.average)) ? 'fill-yellow-500 text-yellow-500' : 'text-gray-200'} 
+                              className={i < Math.round(Number(reviewData.average)) ? 'fill-default-rating-yellow text-default-rating-bg' : 'text-gray-200'} 
                             />
                           ))}
                         </div>
@@ -351,6 +366,7 @@ const PublicShowcase = () => {
                     </div>
                   )}
 
+                  {/* Listado de comentarios */}
                   <div className="space-y-3 mt-2">
                     {reviewData.reviews.length === 0 ? (
                       <p className="text-xs text-gray-400 italic py-2 text-center bg-slate-50 rounded-xl border border-dashed border-gray-100">
@@ -361,9 +377,9 @@ const PublicShowcase = () => {
                         <div key={rev.id} className="border-b border-gray-50 pb-3 last:border-0">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] font-bold text-sabana-blue/60">{rev.buyerEmail?.split('@')[0]}</span>
-                            <div className="flex text-yellow-500">
+                            <div className="flex text-default-rating-bg">
                               {Array(5).fill(0).map((_, i) => (
-                                <Star key={i} size={10} className={i < rev.rating ? 'fill-yellow-500 text-yellow-500' : 'text-gray-200'} />
+                                <Star key={i} size={10} className={i < rev.rating ? 'fill-default-rating-yellow' : 'text-gray-200'} />
                               ))}
                             </div>
                           </div>
@@ -444,6 +460,7 @@ const PublicShowcase = () => {
             <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
           </div>
 
+          {/* MANTENIDO: Botón de chats en el Navbar */}
           <div 
             onClick={handleChatNavigation} 
             className="relative cursor-pointer group" 
@@ -527,7 +544,6 @@ const PublicShowcase = () => {
         </div>
       </section>
 
-      {/* MAIN CONTAINER CORREGIDO Y CERRADO CORRECTAMENTE */}
       <main className="container mx-auto px-6 py-16">
         {/* SECCIÓN MÁS POPULARES */}
         {sortedPopular.length > 0 && (
@@ -548,7 +564,7 @@ const PublicShowcase = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
-                <p className="text-gray-500 mt-1 text-sm"> Los artículos con mayor disponibilidad hoy.</p>
+                <p className="text-gray-500 mt-1 text-sm">Los artículos con mayor disponibilidad hoy.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -615,80 +631,80 @@ const PublicShowcase = () => {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {loading ? (
-            Array(4).fill(0).map((_, i) => (
-              <div key={i} className="h-80 bg-gray-200 animate-pulse rounded-3xl" />
-            ))
-          ) : filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => {
-              const isOwner = checkIfOwner(product);
-              return (
-                <div 
-                  key={product.id} 
-                  onClick={() => setSelectedProduct(product)} 
-                  className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
-                      <img
-                        src={product.imageUrl || logoSabana}
-                        alt={product.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        onError={(e) => { e.target.src = logoSabana; }}
-                      />
-                    </div>
-                    <div className="px-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
-                          {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-                        </span>
-                        <span className={`text-[10px] font-bold uppercase transition-all ${
-                          product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'
-                        }`}>
-                          {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
-                    </div>
+        {loading ? (
+          Array(4).fill(0).map((_, i) => (
+            <div key={i} className="h-80 bg-gray-200 animate-pulse rounded-3xl" />
+          ))
+        ) : filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => {
+            const isOwner = checkIfOwner(product);
+            return (
+              <div 
+                key={product.id} 
+                onClick={() => setSelectedProduct(product)} 
+                className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
+                    <img
+                      src={product.imageUrl || logoSabana}
+                      alt={product.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => { e.target.src = logoSabana; }}
+                    />
                   </div>
+                  <div className="px-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                        {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase transition-all ${
+                        product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'
+                      }`}>
+                        {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
+                  </div>
+                </div>
 
-                  <div className="px-2 mt-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-                      <div 
-                        onClick={(e) => handleAddToCartClick(e, product)}
-                        className={`p-2 rounded-xl transition-colors ${
-                          isOwner
-                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
-                        }`}
-                      >
-                        <ShoppingCart size={18} />
-                      </div>
+                <div className="px-2 mt-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                    <div 
+                      onClick={(e) => handleAddToCartClick(e, product)}
+                      className={`p-2 rounded-xl transition-colors ${
+                        isOwner
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
+                      }`}
+                    >
+                      <ShoppingCart size={18} />
                     </div>
                   </div>
                 </div>
-              );
-            })
-          ) : (
-            <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-white rounded-[40px] shadow-sm border border-dashed border-gray-200 animate-in fade-in zoom-in duration-500">
-              <div className="bg-sabana-light p-6 rounded-full mb-6">
-                <Search size={48} className="text-sabana-blue/20" />
               </div>
-              <h3 className="text-2xl font-bold text-sabana-blue mb-2">No encontramos nada...</h3>
-              <p className="text-gray-500 max-w-md mx-auto mb-8 px-6">
-                No hay productos que coincidan con tu búsqueda actual "<span className="font-bold text-sabana-blue-light">{searchTerm}</span>" 
-                {selectedCategory !== "ALL" && ` en la categoría ${CATEGORY_LABELS[selectedCategory]}`}.
-              </p>
-              <button 
-                onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
-                className="bg-sabana-blue text-white px-8 py-3 rounded-2xl font-bold hover:bg-sabana-blue-hover transition-all active:scale-95 shadow-lg shadow-sabana-blue/20"
-              >
-                Ver todos los productos
-              </button>
+            );
+          })
+        ) : (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-white rounded-[40px] shadow-sm border border-dashed border-gray-200 animate-in fade-in zoom-in duration-500">
+            <div className="bg-sabana-light p-6 rounded-full mb-6">
+              <Search size={48} className="text-sabana-blue/20" />
             </div>
-          )}
-        </div>
+            <h3 className="text-2xl font-bold text-sabana-blue mb-2">No encontramos nada...</h3>
+            <p className="text-gray-500 max-w-md mx-auto mb-8 px-6">
+              No hay productos que coincidan con tu búsqueda actual "<span className="font-bold text-sabana-blue-light">{searchTerm}</span>" 
+              {selectedCategory !== "ALL" && ` en la categoría ${CATEGORY_LABELS[selectedCategory]}`}.
+            </p>
+            <button 
+              onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
+              className="bg-sabana-blue text-white px-8 py-3 rounded-2xl font-bold hover:bg-sabana-blue-hover transition-all active:scale-95 shadow-lg shadow-sabana-blue/20"
+            >
+              Ver todos los productos
+            </button>
+          </div>
+        )}
+      </div>
       </main>
 
       {/* FOOTER */}
@@ -736,7 +752,6 @@ const PublicShowcase = () => {
         </div>
       </footer>
 
-      {/* COMPONENTE MODAL DE DETALLE DETECTADO */}
       <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
 
       {/* MANTENIDO: Formulario submodal flotante para la redacción del mensaje inicial */}
