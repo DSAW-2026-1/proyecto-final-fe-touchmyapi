@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+// CONFIGURACIÓN UNIFICADA: Se combinan los iconos de ambas ramas (Star, UserCheck, ShieldAlert de uno; MessageSquare del otro)
 import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut, Star, UserCheck, ShieldAlert, MessageSquare } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
-import { useCart } from '../context/CartContext'; 
+import { useCart } from '../context/CartContext'; // Hook del carrito
 import { useAuth } from '../context/AuthContext';
 import { io } from 'socket.io-client';
-
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 const PublicShowcase = () => {
   const navigate = useNavigate();
@@ -20,11 +19,15 @@ const PublicShowcase = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   
+  // MANTENIDO: Estados para controlar el modal flotante del primer mensaje (Rama: chat)
   const [showContactModal, setShowContactModal] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
   
-  // Sockets memorizados globalmente para evitar loops de reconexión y pérdida de sesión
-  const socket = useMemo(() => io(apiUrl, { autoConnect: true }), []);
+  // CORRECCIÓN: Definición de apiUrl requerida para las peticiones fetch
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+  // CORRECCIÓN: Memorizar la conexión de Socket para evitar loops infinitos de reconexión
+  const socket = useMemo(() => io(apiUrl), [apiUrl]);
 
   const CATEGORY_LABELS = {
     'ACADEMIC_SUPPLIES': 'Útiles académicos',
@@ -36,42 +39,12 @@ const PublicShowcase = () => {
     'OTHER': 'Otros',
   };
 
-  // Extraer información del usuario de forma ultra-segura (Contexto o almacenamiento local)
-  const isLoggedIn = authIsLoggedIn || localStorage.getItem('isLoggedIn') === 'true';
-  
-  const currentUserData = useMemo(() => {
-    if (user) return user;
-    const savedUser = localStorage.getItem('user');
-    try {
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
-  }, [user]);
-
-  const currentUserEmail = useMemo(() => {
-    return user?.email || currentUserData?.email || localStorage.getItem('userEmail') || "";
-  }, [user, currentUserData]);
-
-  const currentUserId = useMemo(() => {
-    return user?.id || currentUserData?.id || localStorage.getItem('userId') || null;
-  }, [user, currentUserData]);
-
-  // Función auxiliar para obtener el email del dueño de un producto sin importar cómo venga estructurado desde el backend
-  const getProductOwnerEmail = useCallback((product) => {
-    if (!product) return "";
-    return product.ownerEmail || product.sellerEmail || product.user?.email || product.userId?.email || "";
-  }, []);
-
   const hasMyOwnProducts = useMemo(() => {
-    if (!currentUserEmail) return false;
-    return products.some(p => {
-      const email = getProductOwnerEmail(p);
-      return email && email.toLowerCase() === currentUserEmail.toLowerCase();
-    });
-  }, [products, currentUserEmail, getProductOwnerEmail]);
+    if (!user || !user.email) return false;
+    return products.some(p => p.ownerEmail && p.ownerEmail.toLowerCase() === user.email.toLowerCase());
+  }, [products, user]);
 
-  // Carga de productos desde el Backend
+  // Fetch de productos reales desde el Backend
   useEffect(() => {
     let isMounted = true;
     const fetchAllProducts = async () => {
@@ -81,10 +54,14 @@ const PublicShowcase = () => {
         const dbProducts = await response.json();
         const validatedDbProducts = Array.isArray(dbProducts) ? dbProducts : [];
 
-        if (isMounted) setProducts(validatedDbProducts);
+        if (isMounted) {
+          setProducts(validatedDbProducts);
+        }
       } catch (error) {
         console.error("Error al cargar productos desde la BD:", error);
-        if (isMounted) setProducts([]);
+        if (isMounted) {
+          setProducts([]);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -92,7 +69,7 @@ const PublicShowcase = () => {
 
     fetchAllProducts();
     return () => { isMounted = false; };
-  }, []);
+  }, [apiUrl]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -102,15 +79,14 @@ const PublicShowcase = () => {
 
       const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory;
 
-      const ownerEmail = getProductOwnerEmail(product);
-      const isNotMine = !currentUserEmail || !ownerEmail || 
-                        ownerEmail.toLowerCase() !== currentUserEmail.toLowerCase();
+      const isNotMine = !user || !user.email || !product.ownerEmail || 
+                        product.ownerEmail.toLowerCase() !== user.email.toLowerCase();
 
       const hasStock = product.stock > 0;
 
       return matchesSearch && matchesCategory && isNotMine && hasStock;
     });
-  }, [products, searchTerm, selectedCategory, currentUserEmail, getProductOwnerEmail]);
+  }, [products, searchTerm, selectedCategory, user]);
 
   const sortedPopular = useMemo(() => {
     if (filteredProducts.length === 0) return [];
@@ -132,22 +108,33 @@ const PublicShowcase = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userId'); 
+    localStorage.removeItem('userEmail');
     window.location.reload();
   };
 
+  const isLoggedIn = authIsLoggedIn || localStorage.getItem('isLoggedIn') === 'true';
+  const userData = useMemo(() => {
+    if (user) return user;
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  }, [user]);
+  const currentUserId = user?.id ?? userData?.id ?? localStorage.getItem('userId');
+  const currentUserEmail = user?.email ?? userData?.email ?? localStorage.getItem('userEmail');
+
   const checkIfOwner = useCallback((product) => {
     if (!product) return false;
-    const ownerEmail = getProductOwnerEmail(product);
-    if (currentUserEmail && ownerEmail && ownerEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
+    
+    if (currentUserEmail && product.ownerEmail && product.ownerEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
       return true;
     }
-    const sellerId = product.user?.id || product.sellerId || product.userId;
-    if (currentUserId && sellerId && Number(sellerId) === Number(currentUserId)) {
-      return true;
+    if (currentUserId) {
+      const sellerId = product.user?.id || product.sellerId || product.userId || product.user_id;
+      if (sellerId && Number(sellerId) === Number(currentUserId)) return true;
     }
     return false;
-  }, [currentUserId, currentUserEmail, getProductOwnerEmail]);
+  }, [currentUserId, currentUserEmail]);
 
   const handleAddToCartClick = (e, product) => {
     e.stopPropagation(); 
@@ -156,26 +143,26 @@ const PublicShowcase = () => {
       navigate('/login');
       return;
     }
+    
     addToCart(product);
   };
 
-  // MEJORA CRÍTICA: Enviar el estado del usuario logueado al ChatPage para evitar pantallas vacías o desautenticadas
   const handleChatNavigation = () => {
     if (!isLoggedIn) {
       alert("¡Hola! Para ver tus chats debes iniciar sesión con tu cuenta Sabana.");
       navigate('/login');
       return;
     }
-    navigate('/chat', { state: { userEmail: currentUserEmail, userId: currentUserId } });
+    navigate('/chats');
   };
 
   const handleSendFirstMessage = (e) => {
     e.preventDefault();
+    
     if (!firstMessage.trim() || !currentUserEmail || !selectedProduct) return;
   
     const buyerClean = currentUserEmail.replace(/[@.]/g, '_');
     const roomId = `room_${selectedProduct.id}_${buyerClean}`;
-    const sellerEmail = getProductOwnerEmail(selectedProduct);
   
     const chatPayload = {
       roomId,
@@ -183,7 +170,7 @@ const PublicShowcase = () => {
       productTitle: selectedProduct.title,
       productImage: selectedProduct.imageUrl || selectedProduct.image,
       buyerEmail: currentUserEmail,
-      sellerEmail: sellerEmail,
+      sellerEmail: selectedProduct.ownerEmail || selectedProduct.sellerEmail,
       senderEmail: currentUserEmail,
       text: firstMessage.trim()
     };
@@ -193,32 +180,26 @@ const PublicShowcase = () => {
   
     setFirstMessage("");
     setShowContactModal(false);
-    setSelectedProduct(null);
+    setSelectedProduct(null); // Cerrar modal detalle
     
-    navigate('/chats', { state: { activeRoomId: roomId, userEmail: currentUserEmail } });
+    navigate('/chats', { state: { activeRoomId: roomId } });
   };
 
-  // SUBCOMPONENTE: Modal de Detalle de Producto y Reseñas
+  // Componente Modal de Detalle de Producto Unificado
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
     
     const isOwner = checkIfOwner(product);
-    const ownerEmail = getProductOwnerEmail(product);
-    
-    const [sellerStats, setSellerStats] = useState({ fullName: "Miembro Sabana", totalSales: 0 });
+    const [sellerStats, setSellerStats] = useState({ fullName: "Cargando...", totalSales: 0 });
     const [reviewData, setReviewData] = useState({ reviews: [], count: 0, average: null });
     const [loadingMetadata, setLoadingMetadata] = useState(true);
 
-    // CORRECCIÓN DE RESEÑAS: Validación estricta del email antes de consultar la API
     useEffect(() => {
-      if (!ownerEmail) {
-        setLoadingMetadata(false);
-        return;
-      }
+      if (!product.ownerEmail) return;
 
       const fetchMetadata = async () => {
         try {
-          const statsRes = await fetch(`${apiUrl}/api/v1/reviews/seller-stats/${ownerEmail}`);
+          const statsRes = await fetch(`${apiUrl}/api/v1/reviews/seller-stats/${product.ownerEmail}`);
           const statsData = statsRes.ok ? await statsRes.json() : { fullName: "Miembro Sabana", totalSales: 0 };
           
           const reviewRes = await fetch(`${apiUrl}/api/v1/reviews/product/${product.id}`);
@@ -226,16 +207,15 @@ const PublicShowcase = () => {
 
           setSellerStats(statsData);
           setReviewData(revData);
-        // Código corregido
         } catch (error) {
           console.error("Error al recopilar metadatos de reseñas:", error);
-        } finally { // <--- CORREGIDO
+        } finally {
           setLoadingMetadata(false);
         }
       };
 
       fetchMetadata();
-    }, [product, ownerEmail]);
+    }, [product]);
 
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -319,9 +299,9 @@ const PublicShowcase = () => {
               </h3>
               
               <div className="bg-sabana-light/50 p-4 rounded-2xl border border-sabana-blue/5">
-                <p className="text-sm font-bold text-sabana-blue">{sellerStats.fullName || sellerStats.name || "Miembro Sabana"}</p>
+                <p className="text-sm font-bold text-sabana-blue">{sellerStats.fullName}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Ventas concretadas en campus: <span className="font-extrabold text-sabana-blue">{sellerStats.totalSales || 0}</span>
+                  Ventas concretadas en campus: <span className="font-extrabold text-sabana-blue">{sellerStats.totalSales}</span>
                 </p>
               </div>
             </div>
@@ -331,14 +311,14 @@ const PublicShowcase = () => {
                 <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest">
                   Opiniones del Producto
                 </h3>
-                <span className="text-[10px] text-gray-400 font-bold">({reviewData.count || 0} reseñas)</span>
+                <span className="text-[10px] text-gray-400 font-bold">({reviewData.count} reseñas)</span>
               </div>
 
               {loadingMetadata ? (
                 <p className="text-xs text-gray-400 italic">Cargando reputación...</p>
               ) : (
                 <>
-                  {(!reviewData.count || reviewData.count < 10) ? (
+                  {reviewData.count < 10 ? (
                     <div className="flex items-start gap-3 bg-amber-50/60 border border-amber-200/60 p-4 rounded-2xl">
                       <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
                       <div>
@@ -372,7 +352,7 @@ const PublicShowcase = () => {
                   )}
 
                   <div className="space-y-3 mt-2">
-                    {!reviewData.reviews || reviewData.reviews.length === 0 ? (
+                    {reviewData.reviews.length === 0 ? (
                       <p className="text-xs text-gray-400 italic py-2 text-center bg-slate-50 rounded-xl border border-dashed border-gray-100">
                         Aún no hay comentarios escritos sobre este artículo.
                       </p>
@@ -450,6 +430,7 @@ const PublicShowcase = () => {
               <button 
                 onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
                 className="absolute right-4 top-2.5 p-1 rounded-full text-white/50 hover:text-red-400 group-focus-within:text-sabana-blue/40 group-focus-within:hover:text-red-500 transition-all duration-200 z-10"
+                title="Limpiar búsqueda"
               >
                 <X size={18} strokeWidth={3} />
               </button>
@@ -486,8 +467,18 @@ const PublicShowcase = () => {
                 role="button"
                 tabIndex={0}
                 onClick={() => {
-                  if (isLoggedIn) navigate('/userprofile');
-                  else navigate('/login');
+                  if (isLoggedIn || userData) {
+                    navigate('/userprofile');
+                  } else {
+                    navigate('/login');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (isLoggedIn || userData) navigate('/userprofile');
+                    else navigate('/login');
+                  }
                 }}
                 className="flex items-center gap-2 text-white group cursor-pointer hover:text-sabana-softGold transition-colors"
               >
@@ -499,9 +490,9 @@ const PublicShowcase = () => {
                 </span>
               </div>
 
-              {isLoggedIn && currentUserData?.name && (
+              {isLoggedIn && userData?.name && (
                 <span className="text-[10px] font-medium text-sabana-softGold/80 italic lowercase leading-none text-center mt-0.5">
-                  {currentUserData.name}
+                  {userData.name}
                 </span>
               )}
             </div>
@@ -510,6 +501,7 @@ const PublicShowcase = () => {
               <button
                 onClick={handleLogout}
                 className="ml-2 p-2 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all duration-300 self-center"
+                title="Cerrar Sesión"
               >
                 <LogOut size={18} />
               </button>
@@ -535,24 +527,28 @@ const PublicShowcase = () => {
         </div>
       </section>
 
-      {/* PRODUCTOS */}
+      {/* MAIN CONTAINER CORREGIDO Y CERRADO CORRECTAMENTE */}
       <main className="container mx-auto px-6 py-16">
+        {/* SECCIÓN MÁS POPULARES */}
         {sortedPopular.length > 0 && (
           <section className="mb-20 animate-in fade-in duration-500">
             {hasMyOwnProducts && (
               <button
                 onClick={() => navigate('/PersonalInventory')} 
                 className="mb-3 inline-flex items-center gap-2 px-4 py-1.5 bg-sabana-blue-light/10 border border-sabana-blue-light/300 text-sabana-blue-light text-xs font-black uppercase tracking-widest rounded-full cursor-pointer hover:bg-sabana-softGold/20 hover:scale-[1.02] active:scale-[0.98] transition-all group duration-200"
+                title="Ir a gestionar mis publicaciones"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-sabana-blue-light animate-pulse"></span>
                 Tienes productos publicados en el Marketplace
-                <span className="transform group-hover:translate-x-1 transition-transform inline-block ml-1 font-bold">→</span>
+                <span className="transform group-hover:translate-x-1 transition-transform inline-block ml-1 font-bold">
+                  →
+                </span>
               </button>
             )}
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>
-                <p className="text-gray-500 mt-1 text-sm">Los artículos con mayor disponibilidad hoy.</p>
+                <p className="text-gray-500 mt-1 text-sm"> Los artículos con mayor disponibilidad hoy.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -596,7 +592,9 @@ const PublicShowcase = () => {
                         <div 
                           onClick={(e) => handleAddToCartClick(e, product)}
                           className={`p-2 rounded-xl transition-colors cursor-pointer ${
-                            isOwner ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
+                            isOwner
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
                           }`}
                         >
                           <ShoppingCart size={18} />
@@ -610,6 +608,7 @@ const PublicShowcase = () => {
           </section>
         )}
 
+        {/* TODOS LOS PRODUCTOS */}
         <div className="flex items-center justify-between mb-12">
           <h2 className="text-3xl font-bold text-sabana-blue tracking-tight">Explorar Productos</h2>
           <div className="h-1 flex-1 mx-8 bg-sabana-blue/5 rounded-full"></div>
@@ -659,7 +658,9 @@ const PublicShowcase = () => {
                       <div 
                         onClick={(e) => handleAddToCartClick(e, product)}
                         className={`p-2 rounded-xl transition-colors ${
-                          isOwner ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
+                          isOwner
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
                         }`}
                       >
                         <ShoppingCart size={18} />
@@ -676,7 +677,8 @@ const PublicShowcase = () => {
               </div>
               <h3 className="text-2xl font-bold text-sabana-blue mb-2">No encontramos nada...</h3>
               <p className="text-gray-500 max-w-md mx-auto mb-8 px-6">
-                No hay productos que coincidan con tu búsqueda actual "<span className="font-bold text-sabana-blue-light">{searchTerm}</span>".
+                No hay productos que coincidan con tu búsqueda actual "<span className="font-bold text-sabana-blue-light">{searchTerm}</span>" 
+                {selectedCategory !== "ALL" && ` en la categoría ${CATEGORY_LABELS[selectedCategory]}`}.
               </p>
               <button 
                 onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
@@ -703,6 +705,8 @@ const PublicShowcase = () => {
               <h4 className="font-bold mb-6 text-sabana-softGold uppercase tracking-widest text-xs">Marketplace</h4>
               <ul className="space-y-4 text-sm text-white/80">
                 <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Todos los productos</li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Publicar artículo</li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Términos y condiciones</li>
               </ul>
             </div>
             <div>
@@ -711,6 +715,7 @@ const PublicShowcase = () => {
                 <li className="flex items-center gap-2 hover:text-sabana-softGold cursor-pointer transition-colors">
                     Campus Chía <ExternalLink size={14} />
                 </li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Directorio Estudiantil</li>
               </ul>
             </div>
             <div>
@@ -725,12 +730,16 @@ const PublicShowcase = () => {
               <p className="text-xs text-white/40 font-bold">© 2026 Universidad de La Sabana</p>
             </div>
           </div>
+          <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.3em]">
+            Personas que inspiran personas - Marketplace
+          </div>
         </div>
       </footer>
 
-      {/* MODALES */}
+      {/* COMPONENTE MODAL DE DETALLE DETECTADO */}
       <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
 
+      {/* MANTENIDO: Formulario submodal flotante para la redacción del mensaje inicial */}
       {showContactModal && selectedProduct && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
