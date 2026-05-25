@@ -7,7 +7,6 @@ import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
 import { useCart } from '../context/CartContext'; // Hook del carrito
 import { useAuth } from '../context/AuthContext';
-import { io } from 'socket.io-client';
 import { useNotifications } from '../context/NotificationContext';
 
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
