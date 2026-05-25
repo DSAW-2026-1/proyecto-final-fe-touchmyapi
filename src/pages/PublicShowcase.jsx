@@ -7,6 +7,7 @@ import unisabanalogowhite from '../assets/unisabanalogowhite.png';
 import { useCart } from '../context/CartContext'; 
 import { useAuth } from '../context/AuthContext';
 import { io } from 'socket.io-client';
+import { useNotifications } from '../context/NotificationContext';
 
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -22,6 +23,7 @@ const PublicShowcase = () => {
   
   const [showContactModal, setShowContactModal] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
+  const { unreadCount } = useNotifications();
   
   // Sockets memorizados globalmente para evitar loops de reconexión y pérdida de sesión
   const socket = useMemo(() => io(apiUrl, { autoConnect: true }), []);
@@ -458,10 +460,20 @@ const PublicShowcase = () => {
         </div>
 
         <div className="flex items-center gap-5 text-white">
-          <div className="relative cursor-pointer hover:text-sabana-softGold transition-colors">
-            <Bell size={22} />
-            <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-sabana-blue"></span>
-          </div>
+        <button 
+          onClick={() => navigate('/notifications')} 
+          className="relative p-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-2xl text-slate-600 transition-all active:scale-95 group"
+          title="Mis Notificaciones"
+        >
+          <Bell size={20} className="group-hover:rotate-12 transition-transform" />
+          
+          
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 animate-pulse border-2 border-white">
+              {unreadCount}
+            </span>
+          )}
+        </button>
 
           <div 
             onClick={handleChatNavigation} 

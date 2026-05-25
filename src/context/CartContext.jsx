@@ -1,32 +1,48 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNotifications } from './NotificationContext';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    const savedCart = localStorage.getItem('cartItems');
+    return savedCart ? JSON.parse(savedCart) : [];
+  });
+  const { addLocalNotification } = useNotifications();
+
+  useEffect(() => {
+    localStorage.setItem('cartItems', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   // 1. Función para agregar al carrito (CON VALIDACIÓN DE STOCK)
   const addToCart = (product, quantityToAdd = 1) => {
+    // Primero hacemos la validación de stock mirando lo que ya hay en el carrito
+    const existingItem = cartItems.find((item) => item.id === product.id);
+    const currentQuantity = existingItem ? existingItem.quantity : 0;
+    const newQuantity = currentQuantity + quantityToAdd;
+
+    if (newQuantity > product.stock) {
+      alert(`¡Ups! Solo hay ${product.stock} unidades disponibles de este producto.`);
+      return;
+    }
+
+    // Actualizamos el estado del carrito de forma limpia
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === product.id);
-      const currentQuantity = existingItem ? existingItem.quantity : 0;
-      const newQuantity = currentQuantity + quantityToAdd;
-
-      // VALIDACIÓN: ¿La nueva cantidad supera el stock disponible?
-      // Nota: Asegúrate de que el objeto 'product' que traes del backend incluya la propiedad 'stock'
-      if (newQuantity > product.stock) {
-        alert(`¡Ups! Solo hay ${product.stock} unidades disponibles de este producto.`);
-        return prevItems; // Retorna la lista como estaba, cancelando la adición
-      }
-
-      if (existingItem) {
+      const itemEnCarrito = prevItems.find((item) => item.id === product.id);
+      if (itemEnCarrito) {
         return prevItems.map((item) =>
-          item.id === product.id ? { ...item, quantity: newQuantity } : item
+          item.id === product.id ? { ...item, quantity: itemEnCarrito.quantity + quantityToAdd } : item
         );
       }
-      
       return [...prevItems, { ...product, quantity: quantityToAdd }];
     });
+
+    // ¡EL CAMBIO CLAVE!: Ejecutamos la notificación AFUERA del estado, 
+    // justo después de mandar a actualizar el carrito de forma segura.
+    addLocalNotification(
+      `Añadiste ${quantityToAdd} unidad(es) de "${product.title}" a tu carrito de compras.`, 
+      'CARRITO'
+    );
   };
 
   // 2. NUEVA FUNCIÓN: Para actualizar la cantidad directamente en la página del carrito (+ / -)

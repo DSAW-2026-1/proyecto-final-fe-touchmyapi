@@ -3,41 +3,66 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Al cargar la app, revisamos si hay sesión guardada
+  // Inicialización síncrona leyendo el storage de inmediato
+  const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');
-    const savedStatus = localStorage.getItem('isLoggedIn') === 'true';
-    
-    if (savedUser && savedStatus) {
-      setUser(JSON.parse(savedUser));
-      setIsLoggedIn(true);
-    }
-    setLoading(false);
-  }, []);
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('isLoggedIn') === 'true';
+  });
+
+  // Lo dejamos en false por defecto para que las rutas protegidas 
+  // no crean que está cargando y te boten al login inmediatamente.
+  const [loading, setLoading] = useState(false); 
 
   const login = (userData) => {
-    const userId = userData?.id ?? userData?.userId ?? userData?.user_id;
+    const emailNormalizado = (userData?.email || '').toLowerCase().trim();
+    
+    // Si eres tú, papá, el rol es ADMIN sí o sí, sin importar qué mande el backend
+    const isAdmin = emailNormalizado === 'jusselth@unisabana.edu.co' || userData?.role === 'ADMIN';
+    const finalRole = isAdmin ? 'ADMIN' : (userData?.role || 'USER');
+
+    // Mapeador exacto compatible con Checkout, Showcase y tu base de datos db.js
+    const formattedUser = {
+      email: emailNormalizado,
+      name: userData?.name || userData?.name || (isAdmin ? 'Jusselth' : ''),
+      lastName: userData?.lastName || (isAdmin ? 'Chica' : ''),
+      career: userData?.career || '',
+      role: finalRole,
+      id: userData?.id ?? userData?.userId ?? userData?.user_id ?? (isAdmin ? 'ADMIN-001' : null)
+    };
+
+    // Guardamos en LocalStorage con llaves redundantes para que CUALQUIER componente lo lea bien
     localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('user', JSON.stringify(userData));
-    if (userId != null) localStorage.setItem('userId', String(userId));
-    if (userData?.email) localStorage.setItem('userEmail', userData.email);
-    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(formattedUser));
+    localStorage.setItem('userEmail', formattedUser.email);
+    localStorage.setItem('userRole', formattedUser.role);
+    if (formattedUser.id) localStorage.setItem('userId', String(formattedUser.id));
+
+    setUser(formattedUser);
     setIsLoggedIn(true);
   };
 
   const logout = () => {
-    localStorage.clear(); // Limpia todo
+    localStorage.clear();
     setUser(null);
     setIsLoggedIn(false);
-    window.location.href = '/'; // Opcional: redirigir al home
+    window.location.href = '/login';
+  };
+
+  const updateUserRole = (newRole) => {
+    localStorage.setItem('userRole', newRole);
+    if (user) {
+      const updated = { ...user, role: newRole };
+      localStorage.setItem('user', JSON.stringify(updated));
+      setUser(updated);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, loading, login, logout, updateUserRole }}>
       {children}
     </AuthContext.Provider>
   );

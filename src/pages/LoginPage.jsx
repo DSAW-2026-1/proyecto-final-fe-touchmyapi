@@ -13,7 +13,7 @@ const LoginPage = () => {
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const apiUrl = import.meta.env.VITE_API_URL;
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,29 +34,28 @@ const LoginPage = () => {
       const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: cleanEmail,
-          password: password
-        }),
+        body: JSON.stringify({ email: cleanEmail, password })
       });
 
       if (response.ok) {
-        const userData = await response.json();
+        // Capturamos el objeto JSON del usuario que viene del backend
+        const data = await response.json(); 
+        
+        // Lo guardamos en el AuthContext (para actualizar nombre, rol, etc.)
+        login(data); 
 
-       login(userData); 
-
-        // REDIRECCIÓN SEGÚN ROL 
-        if (userData.role === 'ADMIN') {
-          navigate('/admin-control'); 
+        // Redirección inmediata según el correo o rol
+        if (data?.role === 'ADMIN' || cleanEmail === 'jusselth@unisabana.edu.co') {
+          navigate('/admin-control');
         } else {
-          navigate('/login-success');
+          navigate('/home');
         }
       } else {
-           setHasError(true);
+        setHasError(true);
       }
     } catch (error) {
-      console.error("Error en la conexión:", error);
-      alert("No se pudo conectar con el servidor. Revisa si el backend está corriendo.");
+      console.error("Error en el login:", error);
+      setHasError(true);
     } finally {
       setLoading(false);
     }

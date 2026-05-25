@@ -21,7 +21,7 @@ const CheckoutPage = () => {
   // Estados del Formulario con datos quemados e inicializados de forma limpia
   const [formData, setFormData] = useState({
     email: user?.email || '',
-    firstName: user?.name || '',
+    name: user?.name || '',
     lastName: user?.lastName || '',
     // Datos de envío quemados para la Universidad de La Sabana
     address: 'Campus Universitario, Km 7 Autopista Norte',
@@ -77,7 +77,7 @@ const CheckoutPage = () => {
     };
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/orders/checkout`, {
+      const response = await fetch(`${apiUrl}/api/v1/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload)
@@ -178,7 +178,7 @@ const CheckoutPage = () => {
                   <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Nombre</label>
                   <input 
                     type="text" 
-                    value={formData.firstName} 
+                    value={formData.name} 
                     disabled 
                     className="w-full p-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-sm font-bold cursor-not-allowed outline-none"
                   />

@@ -3,8 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext'; 
 import ProtectedRoute from './components/ProtectedRoute';
+import { NotificationProvider } from './context/NotificationContext';
 
 
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const CreateProduct = lazy(() => import('./pages/CreateProduct'));
@@ -29,43 +31,46 @@ const PageLoader = () => (
 function App() {
   return (
     <AuthProvider> 
-      <CartProvider>
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/home" replace />} />
-              
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/success" element={<SuccessPage />} />
-              <Route path="/login-success" element={<LoginSuccessPage />} />
-              <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
+      <NotificationProvider>
+        <CartProvider>
+          <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/home" replace />} />
+                
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/success" element={<SuccessPage />} />
+                <Route path="/login-success" element={<LoginSuccessPage />} />
+                <Route path="/error-user-exists" element={<ErrorUserExistsPage />} />
 
-              <Route path="/home" element={<PublicShowcase />} />
-              <Route path="/userprofile" element={<UserProfile />} />
-              <Route path="/password" element={<ChangePassword />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/PersonalInventory" element={<PersonalInventory />} />
-              <Route path="/create-product" element={<CreateProduct />} />
-              <Route path="/cart-page" element={<CartPage />} />
+                <Route path="/home" element={<PublicShowcase />} />
+                <Route path="/userprofile" element={<UserProfile />} />
+                <Route path="/password" element={<ChangePassword />} />
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/PersonalInventory" element={<PersonalInventory />} />
+                <Route path="/create-product" element={<CreateProduct />} />
+                <Route path="/cart-page" element={<CartPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
 
-              <Route 
-                path="/admin-control" 
-                element={
-                  <ProtectedRoute>
-                    <AdminDashboard/>
-                  </ProtectedRoute>
-                } 
-              />
-              
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
+                <Route 
+                  path="/admin-control" 
+                  element={
+                    <ProtectedRoute>
+                      <AdminDashboard/>
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
 
-              <Route path="*" element={<Navigate to="/home" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </CartProvider>
+                <Route path="*" element={<Navigate to="/home" replace />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </CartProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
