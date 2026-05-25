@@ -70,24 +70,16 @@ const PersonalInventory = () => {
     }
   }, [user, navigate]);
 
-  const handleMarkAsDelivered = async (orderId) => {
+  // FUNCIÓN ASÍNCRONA PARA ACTUALIZAR EL ESTADO DE LA ORDEN DE MANERA DINÁMICA
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       const response = await fetch(`${apiUrl}/api/v1/orders/${orderId}/status`, {
-        method: 'PATCH',
+        method: 'PATCH', // CAMBIADO A PATCH para coincidir con tus rutas
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ENTREGADO' })
+        body: JSON.stringify({ status: newStatus })
       });
-
-      if (response.ok) {
-        setSales(sales.map(sale => sale.id === orderId ? { ...sale, status: 'ENTREGADO' } : sale));
-        alert("¡Pedido marcado como entregado! Ahora el comprador podrá calificar este producto.");
-      } else {
-        alert("No se pudo actualizar el estado de la orden.");
-      }
-    } catch (error) {
-      console.error("Error actualizando orden:", error);
-    }
-  };
+      
+      // ... resto del código igual ...
 
   const handleDeleteProduct = async (id) => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer y modificará tu catálogo.")) {
@@ -214,7 +206,6 @@ const PersonalInventory = () => {
                       <p className="bg-sabana-light text-sabana-blue px-2.5 py-0.5 rounded-lg text-xs font-black mt-0.5">{product.stock}</p>
                     </div>
                     <div className="flex gap-2">
-                      {/* Ver Reseñas del Producto */}
                       <button 
                         onClick={() => setSelectedProductReviews(product)} 
                         title="Ver Reseñas del Producto"
@@ -234,7 +225,6 @@ const PersonalInventory = () => {
         ) : (
           /* ================= PESTAÑA 2: COLA DE VENTAS ================= */
           <div className="space-y-4">
-            {/* ... Se mantiene exactamente igual a tu código previo ... */}
             {loadingSales ? (
               <p className="text-center py-10 text-xs font-bold text-gray-400 uppercase tracking-widest">Cargando cola de ventas...</p>
             ) : sales.length === 0 ? (
@@ -264,9 +254,13 @@ const PersonalInventory = () => {
                         <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider">
                           <CheckCircle2 size={12} /> Entregado
                         </span>
+                      ) : sale.status === 'READY_FOR_DELIVERY' ? (
+                        <span className="flex items-center gap-1 text-[10px] font-black text-amber-500 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">
+                          <Clock size={12} /> Listo para entrega
+                        </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">
-                          <Clock size={12} /> Pendiente Entrega
+                        <span className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                          <Clock size={12} /> Por Alistar
                         </span>
                       )}
                     </div>
@@ -294,16 +288,32 @@ const PersonalInventory = () => {
                     ))}
                   </div>
 
-                  {sale.status !== 'ENTREGADO' && (
-                    <div className="pt-2 flex justify-end">
+                  {/* CONTROL DE BOTONES DINÁMICOS DEL VENDEDOR */}
+                  <div className="pt-2 flex justify-end gap-2">
+                    {sale.status !== 'READY_FOR_DELIVERY' && sale.status !== 'ENTREGADO' && (
                       <button
-                        onClick={() => handleMarkAsDelivered(sale.id)}
+                        onClick={() => handleUpdateOrderStatus(sale.id, 'READY_FOR_DELIVERY')}
+                        className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-sabana-blue text-white hover:bg-sabana-blue-hover active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                      >
+                        <Clock size={14} /> Marcar como Listo para Entregar
+                      </button>
+                    )}
+                    
+                    {sale.status === 'READY_FOR_DELIVERY' && (
+                      <span className="text-[11px] font-black uppercase bg-slate-100 text-slate-500 px-4 py-2.5 rounded-xl border border-slate-200 cursor-not-allowed">
+                        ⏰ Esperando confirmación del comprador
+                      </span>
+                    )}
+
+                    {sale.status !== 'ENTREGADO' && (
+                      <button
+                        onClick={() => handleUpdateOrderStatus(sale.id, 'ENTREGADO')}
                         className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
                       >
-                        <CheckCircle2 size={14} /> Marcar como Entregado por Orden
+                        <CheckCircle2 size={14} /> Forzar Entrega Completa
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -324,7 +334,6 @@ const PersonalInventory = () => {
         />
       )}
 
-      {/* Renderizado condicional del visualizador de reseñas */}
       {selectedProductReviews && (
         <ReviewsModal 
           product={selectedProductReviews} 
@@ -336,7 +345,7 @@ const PersonalInventory = () => {
   );
 };
 
-/* ================= SUB-COMPONENTE NUEVO: VISUALIZADOR DE RESEÑAS ================= */
+/* ================= SUB-COMPONENTE: VISUALIZADOR DE RESEÑAS ================= */
 const ReviewsModal = ({ product, onClose, apiUrl }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -347,7 +356,6 @@ const ReviewsModal = ({ product, onClose, apiUrl }) => {
         const response = await fetch(`${apiUrl}/api/v1/reviews/product/${product.id}`);
         if (response.ok) {
           const data = await response.json();
-          // El backend exige sacar la propiedad '.reviews' que es el Array
           setReviews(data.reviews || []);
         } else {
           setReviews([]);
@@ -368,8 +376,6 @@ const ReviewsModal = ({ product, onClose, apiUrl }) => {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
       <div className="bg-white p-6 rounded-3xl max-w-lg w-full space-y-4 shadow-2xl flex flex-col max-h-[80vh]">
-        
-        {/* Header del modal */}
         <div className="flex justify-between items-center border-b pb-3 shrink-0">
           <div>
             <h3 className="font-roboto-slab font-black text-sabana-blue uppercase tracking-wide text-sm">Reseñas recibidas</h3>
@@ -380,7 +386,6 @@ const ReviewsModal = ({ product, onClose, apiUrl }) => {
           </button>
         </div>
 
-        {/* Cuerpo / Lista de comentarios */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
           {loading ? (
             <p className="text-center py-6 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cargando comentarios...</p>
@@ -393,7 +398,6 @@ const ReviewsModal = ({ product, onClose, apiUrl }) => {
             reviews.map((rev, index) => (
               <div key={rev.id || index} className="bg-slate-50 p-4 rounded-2xl border border-gray-100 space-y-1.5 text-xs">
                 <div className="flex justify-between items-center">
-                  {/* El backend guarda el email en 'buyerEmail' */}
                   <span className="font-black text-sabana-blue text-[11px]">{rev.buyerEmail || 'Estudiante Sabana'}</span>
                   <div className="flex items-center text-amber-400 gap-0.5">
                     {[...Array(5)].map((_, i) => (
@@ -406,7 +410,6 @@ const ReviewsModal = ({ product, onClose, apiUrl }) => {
                     ))}
                   </div>
                 </div>
-                {/* El backend guarda el comentario en la propiedad 'comment' */}
                 <p className="text-slate-600 font-medium leading-relaxed italic">"{rev.comment || 'Sin comentario escrito.'}"</p>
                 {rev.date && (
                   <p className="text-[9px] text-gray-400 font-bold text-right">
@@ -418,7 +421,6 @@ const ReviewsModal = ({ product, onClose, apiUrl }) => {
           )}
         </div>
 
-        {/* Botón de cierre inferior */}
         <div className="pt-2 shrink-0 border-t">
           <button 
             onClick={onClose}
@@ -427,13 +429,12 @@ const ReviewsModal = ({ product, onClose, apiUrl }) => {
             Cerrar Ventana
           </button>
         </div>
-
       </div>
     </div>
   );
 };
 
-/* Sub-Componente de Edición Extraído y Acoplado con Estética Sabana */
+/* ================= SUB-COMPONENTE: EDIT MODAL ================= */
 const EditModal = ({ product, onClose, onUpdate, apiUrl }) => {
   const [formData, setFormData] = useState({ ...product });
   const [loading, setLoading] = useState(false);
@@ -492,7 +493,6 @@ const EditModal = ({ product, onClose, onUpdate, apiUrl }) => {
     e.preventDefault();
     setHostMessage('');
     
-
     if (!validateForm()) return;
     if (!hasChanges()) {
       setHostMessage('No hay cambios nuevos para sincronizar.');
@@ -594,7 +594,7 @@ const EditModal = ({ product, onClose, onUpdate, apiUrl }) => {
               <option value="ELECTRONICS">Electrónica</option>
               <option value="CLOTHING">Ropa</option>
               <option value="FOOD">Comida</option>
-              <option value="SERVICES">Servicios</option>
+              <option value="SERVICES">Services</option>
               <option value="OTHER">Otros</option>
             </select>
           </div>
