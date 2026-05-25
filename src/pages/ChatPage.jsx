@@ -1,28 +1,29 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Send, MessageSquare, User, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logoSabana from '../assets/sabanalogo.png';
+import { io } from 'socket.io-client';
+
+const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8080');
 
 const ChatPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isLoggedIn: authIsLoggedIn } = useAuth();
   
-  // Recuperar datos de autenticación idénticos a PublicShowcase
   const savedUser = localStorage.getItem('user');
   const userData = user || (savedUser ? JSON.parse(savedUser) : null);
   const currentUserId = user?.id ?? userData?.id ?? localStorage.getItem('userId');
   const currentUserEmail = user?.email ?? userData?.email ?? localStorage.getItem('userEmail');
   const isLoggedIn = authIsLoggedIn || localStorage.getItem('isLoggedIn') === 'true';
 
-  // Estados de la mensajería
   const [chats, setChats] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [newMessage, setNewMessage] = useState("");
   
   const messagesEndRef = useRef(null);
 
-  // Redirección de seguridad si no está logueado
   useEffect(() => {
     if (!isLoggedIn) {
       alert("Debes iniciar sesión para acceder a tus mensajes.");
@@ -30,92 +31,109 @@ const ChatPage = () => {
     }
   }, [isLoggedIn, navigate]);
 
-  // Cargar chats desde LocalStorage (Reactivo/Simulado)
   useEffect(() => {
-    const loadChats = () => {
-      const localChats = JSON.parse(localStorage.getItem('mock_chats') || '[]');
-      
-      // Filtrar chats donde el usuario actual sea el comprador O el vendedor
-      const myChats = localChats.filter(chat => 
-        String(chat.buyerId) === String(currentUserId) || 
-        String(chat.sellerId) === String(currentUserId) ||
-        (currentUserEmail && chat.buyerEmail?.toLowerCase() === currentUserEmail.toLowerCase()) ||
-        (currentUserEmail && chat.sellerEmail?.toLowerCase() === currentUserEmail.toLowerCase())
-      );
-      
-      setChats(myChats);
-      
-      // Seleccionar automáticamente el primer chat si hay disponibles y ninguno activo
-      if (myChats.length > 0 && !activeChatId) {
-        setActiveChatId(myChats[0].id);
+    if (!currentUserEmail) return;
+
+    const fetchChatHistory = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        const response = await fetch(`${apiUrl}/api/v1/chats/user/${currentUserEmail}`);
+        if (response.ok) {
+          const data = await response.json();
+          setChats(data);
+
+          const incomingRoomId = location.state?.activeRoomId;
+          
+          if (incomingRoomId) {
+            setActiveChatId(incomingRoomId);
+            socket.emit('join_room', incomingRoomId);
+          } else if (data.length > 0 && !activeChatId) {
+            setActiveChatId(data[0].id || data[0].roomId);
+            socket.emit('join_room', data[0].id || data[0].roomId);
+          }
+
+          data.forEach(chat => {
+            const rId = chat.id || chat.roomId;
+            if (rId) socket.emit('join_room', rId);
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar historial de chat desde el servidor:", error);
       }
     };
 
-    loadChats();
-    // Escuchar actualizaciones por si se abren pestañas en simultáneo
-    window.addEventListener('storage', loadChats);
-    return () => window.removeEventListener('storage', loadChats);
-  }, [currentUserId, currentUserEmail, activeChatId]);
+    fetchChatHistory();
+  }, [currentUserEmail, location.state]);
 
-  // Auto-scroll al recibir o enviar un mensaje nuevo
+  useEffect(() => {
+    socket.on('receive_message', (messagePayload) => {
+      setChats((prevChats) => {
+        return prevChats.map((chat) => {
+          const rId = chat.id || chat.roomId;
+          if (rId === messagePayload.roomId) {
+            const messageExists = chat.messages.some(msg => msg.id === messagePayload.id);
+            if (messageExists) return chat;
+
+            return {
+              ...chat,
+              messages: [...chat.messages, messagePayload]
+            };
+          }
+          return chat;
+        });
+      });
+    });
+
+    return () => {
+      socket.off('receive_message');
+    };
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chats, activeChatId]);
 
-  // Encontrar el objeto del chat seleccionado actualmente
   const activeChat = useMemo(() => {
-    return chats.find(c => c.id === activeChatId) || null;
+    return chats.find(c => (c.id === activeChatId || c.roomId === activeChatId)) || null;
   }, [chats, activeChatId]);
 
-  // Enviar un mensaje dentro de un chat existente
+  const handleSelectChat = (id) => {
+    setActiveChatId(id);
+    socket.emit('join_room', id);
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeChatId) return;
+    if (!newMessage.trim() || !activeChat) return;
 
-    const allChats = JSON.parse(localStorage.getItem('mock_chats') || '[]');
-    
-    const updatedChats = allChats.map(chat => {
-      if (chat.id === activeChatId) {
-        return {
-          ...chat,
-          messages: [
-            ...chat.messages,
-            {
-              id: `msg_${Date.now()}`,
-              senderId: currentUserId || 'anon',
-              senderEmail: currentUserEmail || '',
-              text: newMessage.trim(),
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-      }
-      return chat;
-    });
+    const rId = activeChat.id || activeChat.roomId;
 
-    localStorage.setItem('mock_chats', JSON.stringify(updatedChats));
-    
-    // Forzar actualización del estado local de inmediato
-    const myUpdatedChats = updatedChats.filter(chat => 
-      String(chat.buyerId) === String(currentUserId) || String(chat.sellerId) === String(currentUserId) ||
-      chat.buyerEmail?.toLowerCase() === currentUserEmail?.toLowerCase() || chat.sellerEmail?.toLowerCase() === currentUserEmail?.toLowerCase()
-    );
-    
-    setChats(myUpdatedChats);
+    const chatPayload = {
+      roomId: rId,
+      productId: activeChat.productId,
+      productTitle: activeChat.productTitle,
+      productImage: activeChat.productImage,
+      buyerEmail: activeChat.buyerEmail,
+      sellerEmail: activeChat.sellerEmail,
+      senderEmail: currentUserEmail,
+      text: newMessage.trim()
+    };
+
+    socket.emit('send_message', chatPayload);
     setNewMessage("");
   };
 
-  // Formatear la estampa de tiempo de los mensajes (HH:MM)
   const formatTime = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
     return date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  // Identificar el rol del usuario en la conversación para poner las etiquetas correctas
   const getInterlocutorLabel = (chat) => {
-    const amIBuyer = String(chat.buyerId) === String(currentUserId) || chat.buyerEmail?.toLowerCase() === currentUserEmail?.toLowerCase();
-    return amIBuyer ? `Vendedor: ${chat.sellerEmail.split('@')[0]}` : `Comprador: ${chat.buyerEmail.split('@')[0]}`;
+    const amIBuyer = chat.buyerEmail?.toLowerCase() === currentUserEmail?.toLowerCase();
+    const targetEmail = amIBuyer ? chat.sellerEmail : chat.buyerEmail;
+    const prefix = amIBuyer ? "Vendedor" : "Comprador";
+    return targetEmail ? `${prefix}: ${targetEmail.split('@')[0]}` : `${prefix}: Estudiante`;
   };
 
   return (
@@ -170,13 +188,14 @@ const ChatPage = () => {
               </div>
             ) : (
               chats.map((chat) => {
-                const isActive = chat.id === activeChatId;
-                const lastMsg = chat.messages[chat.messages.length - 1];
+                const chatId = chat.id || chat.roomId;
+                const isActive = chatId === activeChatId;
+                const lastMsg = chat.messages && chat.messages.length > 0 ? chat.messages[chat.messages.length - 1] : null;
                 
                 return (
                   <div
-                    key={chat.id}
-                    onClick={() => setActiveChatId(chat.id)}
+                    key={chatId}
+                    onClick={() => handleSelectChat(chatId)}
                     className={`p-4 rounded-2xl cursor-pointer transition-all border flex items-start gap-3 ${
                       isActive 
                         ? 'bg-sabana-blue text-white border-sabana-blue shadow-md' 
@@ -253,8 +272,8 @@ const ChatPage = () => {
 
               {/* ÁREA DE MENSAJES FLUJO */}
               <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-sabana-light/20 space-y-4">
-                {activeChat.messages.map((msg) => {
-                  const isMe = String(msg.senderId) === String(currentUserId) || msg.senderEmail?.toLowerCase() === currentUserEmail?.toLowerCase();
+                {activeChat.messages && activeChat.messages.map((msg) => {
+                  const isMe = msg.senderEmail?.toLowerCase() === currentUserEmail?.toLowerCase();
                   
                   return (
                     <div 
@@ -296,7 +315,6 @@ const ChatPage = () => {
               </form>
             </>
           ) : (
-            // ESTADO INICIAL SIN SELECCIÓN (DESKTOP)
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400 bg-gray-50/20">
               <div className="bg-sabana-light p-6 rounded-full mb-4 text-sabana-blue/20">
                 <MessageSquare size={48} />

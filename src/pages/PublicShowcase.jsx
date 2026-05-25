@@ -7,6 +7,7 @@ import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
 import { useCart } from '../context/CartContext'; // Hook del carrito
 import { useAuth } from '../context/AuthContext';
+import { io } from 'socket.io-client';
 
 const PublicShowcase = () => {
   const navigate = useNavigate();
@@ -22,7 +23,8 @@ const PublicShowcase = () => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
   
-  const apiUrl = import.meta.env.VITE_API_URL;
+
+  const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8080');
 
   const CATEGORY_LABELS = {
     'ACADEMIC_SUPPLIES': 'Útiles académicos',
@@ -156,47 +158,35 @@ const PublicShowcase = () => {
   // MANTENIDO: Lógica para registrar el primer mensaje en LocalStorage (Rama: chat)
   const handleSendFirstMessage = (e) => {
     e.preventDefault();
-    if (!firstMessage.trim()) return;
-
-    if (!isLoggedIn) {
-      alert("¡Hola! Debes iniciar sesión con tu cuenta Sabana para enviar mensajes.");
-      navigate('/login');
-      return;
-    }
-
-    const sellerEmail = selectedProduct.ownerEmail || "";
-    const sellerId = selectedProduct.user?.id || selectedProduct.sellerId || selectedProduct.userId || "";
-
-    const localChats = JSON.parse(localStorage.getItem('mock_chats') || '[]');
-    const chatId = `chat_${Date.now()}`;
-
-    const newChatRoom = {
-      id: chatId,
+    
+    if (!firstMessage.trim() || !user) return;
+  
+    // Generamos un roomId único combinando el comprador y el vendedor para este producto
+    const roomId = `room_${selectedProduct.id}_${user.email.replace(/[@.]/g, '_')}`;
+  
+    const chatPayload = {
+      roomId,
       productId: selectedProduct.id,
       productTitle: selectedProduct.title,
-      productImage: selectedProduct.imageUrl,
-      buyerId: currentUserId || 'comprador_anon',
-      buyerEmail: currentUserEmail || '',
-      sellerId: sellerId,
-      sellerEmail: sellerEmail,
-      messages: [
-        {
-          id: `msg_${Date.now()}`,
-          senderId: currentUserId || 'comprador_anon',
-          senderEmail: currentUserEmail || '',
-          text: firstMessage,
-          timestamp: new Date().toISOString()
-        }
-      ]
+      productImage: selectedProduct.images?.[0] || selectedProduct.image,
+      buyerEmail: user.email,
+      sellerEmail: selectedProduct.ownerEmail || selectedProduct.sellerEmail,
+      senderEmail: user.email,
+      text: firstMessage.trim()
     };
-
-    localChats.push(newChatRoom);
-    localStorage.setItem('mock_chats', JSON.stringify(localChats));
-
-    alert(`¡Mensaje enviado con éxito al vendedor! Podrás seguir respondiendo desde el botón de chats en el menú superior.`);
+  
+    // 1. Unirse a la sala en caliente
+    socket.emit('join_room', roomId);
+  
+    // 2. Enviar el payload completo en tiempo real al backend
+    socket.emit('send_message', chatPayload);
+  
+    // 3. Limpiar estados y redirigir al estudiante a su pantalla de Chats
     setFirstMessage("");
     setShowContactModal(false);
-    setSelectedProduct(null); // Cierra de igual forma el detalle del producto de manera limpia
+    
+    // Navegar a la página de chats pasando el roomId para abrirlo automáticamente
+    navigate('/chats', { state: { activeRoomId: roomId } });
   };
 
   // Componente Modal de Detalle de Producto Unificado
