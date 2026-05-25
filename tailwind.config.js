@@ -23,6 +23,8 @@ export default {
         'default-black': '#1A1C1E', // Negro/gris muy oscuro para texto
         'default-gray': '#424242', // Gris por defecto
         'defaultBorder-gray': '#EDF1F3', // Gris por defecto para bordes
+        'default-rating-yellow': '#FFCE1B',
+        'default-rating-bg': '#DBA400'
       },
       animation: {
         'spin-slow': 'spin 8s linear infinite', // Un giro completo cada 8 segundos

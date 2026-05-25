@@ -319,7 +319,7 @@ const UserProfile = () => {
                                         key={star}
                                         size={18}
                                         className={`cursor-pointer transition-colors ${
-                                          star <= rating ? 'text-sabana-softGold fill-sabana-softGold' : 'text-gray-200'
+                                          star <= rating ? 'text-default-rating-bg fill-default-rating-yellow' : 'text-gray-200'
                                         }`}
                                         onClick={() => setRating(star)}
                                       />

@@ -240,14 +240,14 @@ const PublicShowcase = () => {
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
         
         {/* Contenedor adaptado con scroll vertical global interno para el modal */}
-        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
+        <div className="relative bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
           
           <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md">
             <X size={20} />
           </button>
           
           {/* LADO IZQUIERDO: Imagen Fija */}
-          <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light md:sticky md:top-0">
+          <div className="md:w-3/4 h-72 md:h-auto bg-sabana-light md:sticky md:top-0">
             <img 
               src={product.imageUrl || logoSabana} 
               alt={product.title}
@@ -362,12 +362,12 @@ const PublicShowcase = () => {
                         <span className="text-[10px] text-gray-400 font-bold block">de 5</span>
                       </div>
                       <div>
-                        <div className="flex gap-0.5 text-sabana-softGold">
+                        <div className="flex gap-0.5 text-default-rating-bg">
                           {Array(5).fill(0).map((_, i) => (
                             <Star 
                               key={i} 
                               size={14} 
-                              className={i < Math.round(Number(reviewData.average)) ? 'fill-sabana-softGold text-sabana-softGold' : 'text-gray-200'} 
+                              className={i < Math.round(Number(reviewData.average)) ? 'fill-default-rating-yellow text-default-rating-bg' : 'text-gray-200'} 
                             />
                           ))}
                         </div>
@@ -387,9 +387,9 @@ const PublicShowcase = () => {
                         <div key={rev.id} className="border-b border-gray-50 pb-3 last:border-0">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] font-bold text-sabana-blue/60">{rev.buyerEmail?.split('@')[0]}</span>
-                            <div className="flex text-sabana-softGold">
+                            <div className="flex text-default-rating-bg">
                               {Array(5).fill(0).map((_, i) => (
-                                <Star key={i} size={10} className={i < rev.rating ? 'fill-sabana-softGold' : 'text-gray-200'} />
+                                <Star key={i} size={10} className={i < rev.rating ? 'fill-default-rating-yellow' : 'text-gray-200'} />
                               ))}
                             </div>
                           </div>
