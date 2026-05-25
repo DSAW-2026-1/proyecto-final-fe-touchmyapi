@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+// CONFIGURACIÓN UNIFICADA: Se combinan los iconos de ambas ramas (Star, UserCheck, ShieldAlert de uno; MessageSquare del otro)
 import { Search, Bell, User, ShoppingCart, Phone, Mail, ExternalLink, X, LogOut, Star, UserCheck, ShieldAlert, MessageSquare } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import logoSabana from '../assets/sabanalogo.png';
 import unisabanalogowhite from '../assets/unisabanalogowhite.png';
-import { useCart } from '../context/CartContext'; 
+import { useCart } from '../context/CartContext'; // Hook del carrito
 import { useAuth } from '../context/AuthContext';
 import { io } from 'socket.io-client';
 import { useNotifications } from '../context/NotificationContext';
@@ -21,12 +22,12 @@ const PublicShowcase = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   
+  // MANTENIDO: Estados para controlar el modal flotante del primer mensaje (Rama: chat)
   const [showContactModal, setShowContactModal] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
   const { unreadCount } = useNotifications();
   
-  // Sockets memorizados globalmente para evitar loops de reconexión y pérdida de sesión
-  const socket = useMemo(() => io(apiUrl, { autoConnect: true }), []);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   const CATEGORY_LABELS = {
     'ACADEMIC_SUPPLIES': 'Útiles académicos',
@@ -38,42 +39,12 @@ const PublicShowcase = () => {
     'OTHER': 'Otros',
   };
 
-  // Extraer información del usuario de forma ultra-segura (Contexto o almacenamiento local)
-  const isLoggedIn = authIsLoggedIn || localStorage.getItem('isLoggedIn') === 'true';
-  
-  const currentUserData = useMemo(() => {
-    if (user) return user;
-    const savedUser = localStorage.getItem('user');
-    try {
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
-  }, [user]);
-
-  const currentUserEmail = useMemo(() => {
-    return user?.email || currentUserData?.email || localStorage.getItem('userEmail') || "";
-  }, [user, currentUserData]);
-
-  const currentUserId = useMemo(() => {
-    return user?.id || currentUserData?.id || localStorage.getItem('userId') || null;
-  }, [user, currentUserData]);
-
-  // Función auxiliar para obtener el email del dueño de un producto sin importar cómo venga estructurado desde el backend
-  const getProductOwnerEmail = useCallback((product) => {
-    if (!product) return "";
-    return product.ownerEmail || product.sellerEmail || product.user?.email || product.userId?.email || "";
-  }, []);
-
   const hasMyOwnProducts = useMemo(() => {
-    if (!currentUserEmail) return false;
-    return products.some(p => {
-      const email = getProductOwnerEmail(p);
-      return email && email.toLowerCase() === currentUserEmail.toLowerCase();
-    });
-  }, [products, currentUserEmail, getProductOwnerEmail]);
+    if (!user || !user.email) return false;
+    return products.some(p => p.ownerEmail && p.ownerEmail.toLowerCase() === user.email.toLowerCase());
+  }, [products, user]);
 
-  // Carga de productos desde el Backend
+  // Fetch de productos reales desde el Backend
   useEffect(() => {
     let isMounted = true;
     const fetchAllProducts = async () => {
@@ -83,10 +54,14 @@ const PublicShowcase = () => {
         const dbProducts = await response.json();
         const validatedDbProducts = Array.isArray(dbProducts) ? dbProducts : [];
 
-        if (isMounted) setProducts(validatedDbProducts);
+        if (isMounted) {
+          setProducts(validatedDbProducts);
+        }
       } catch (error) {
         console.error("Error al cargar productos desde la BD:", error);
-        if (isMounted) setProducts([]);
+        if (isMounted) {
+          setProducts([]);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -94,7 +69,7 @@ const PublicShowcase = () => {
 
     fetchAllProducts();
     return () => { isMounted = false; };
-  }, []);
+  }, [apiUrl]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -104,15 +79,14 @@ const PublicShowcase = () => {
 
       const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory;
 
-      const ownerEmail = getProductOwnerEmail(product);
-      const isNotMine = !currentUserEmail || !ownerEmail || 
-                        ownerEmail.toLowerCase() !== currentUserEmail.toLowerCase();
+      const isNotMine = !user || !user.email || !product.ownerEmail || 
+                        product.ownerEmail.toLowerCase() !== user.email.toLowerCase();
 
       const hasStock = product.stock > 0;
 
       return matchesSearch && matchesCategory && isNotMine && hasStock;
     });
-  }, [products, searchTerm, selectedCategory, currentUserEmail, getProductOwnerEmail]);
+  }, [products, searchTerm, selectedCategory, user]);
 
   const sortedPopular = useMemo(() => {
     if (filteredProducts.length === 0) return [];
@@ -134,22 +108,34 @@ const PublicShowcase = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userId'); 
+    localStorage.removeItem('userEmail');
     window.location.reload();
   };
 
+  const isLoggedIn = authIsLoggedIn || localStorage.getItem('isLoggedIn') === 'true';
+  const userData = useMemo(() => {
+    if (user) return user;
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  }, [user]);
+  const currentUserId = user?.id ?? userData?.id ?? localStorage.getItem('userId');
+  const currentUserEmail = user?.email ?? userData?.email ?? localStorage.getItem('userEmail');
+
   const checkIfOwner = useCallback((product) => {
     if (!product) return false;
-    const ownerEmail = getProductOwnerEmail(product);
-    if (currentUserEmail && ownerEmail && ownerEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
+    
+    // Validación cruzada estricta por Email u ID
+    if (currentUserEmail && product.ownerEmail && product.ownerEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
       return true;
     }
-    const sellerId = product.user?.id || product.sellerId || product.userId;
-    if (currentUserId && sellerId && Number(sellerId) === Number(currentUserId)) {
-      return true;
+    if (currentUserId) {
+      const sellerId = product.user?.id || product.sellerId || product.userId || product.user_id;
+      if (sellerId && Number(sellerId) === Number(currentUserId)) return true;
     }
     return false;
-  }, [currentUserId, currentUserEmail, getProductOwnerEmail]);
+  }, [currentUserId, currentUserEmail]);
 
   const handleAddToCartClick = (e, product) => {
     e.stopPropagation(); 
@@ -158,98 +144,115 @@ const PublicShowcase = () => {
       navigate('/login');
       return;
     }
+    
     addToCart(product);
   };
 
-  // MEJORA CRÍTICA: Enviar el estado del usuario logueado al ChatPage para evitar pantallas vacías o desautenticadas
+  // MANTENIDO: Validación y redirección del botón de Chat del Navbar (Rama: chat)
   const handleChatNavigation = () => {
     if (!isLoggedIn) {
       alert("¡Hola! Para ver tus chats debes iniciar sesión con tu cuenta Sabana.");
       navigate('/login');
       return;
     }
-    navigate('/chat', { state: { userEmail: currentUserEmail, userId: currentUserId } });
+    navigate('/chat');
   };
 
+  // MANTENIDO: Lógica para registrar el primer mensaje en LocalStorage (Rama: chat)
   const handleSendFirstMessage = (e) => {
     e.preventDefault();
-    if (!firstMessage.trim() || !currentUserEmail || !selectedProduct) return;
-  
-    const buyerClean = currentUserEmail.replace(/[@.]/g, '_');
-    const roomId = `room_${selectedProduct.id}_${buyerClean}`;
-    const sellerEmail = getProductOwnerEmail(selectedProduct);
-  
-    const chatPayload = {
-      roomId,
+    if (!firstMessage.trim()) return;
+
+    if (!isLoggedIn) {
+      alert("¡Hola! Debes iniciar sesión con tu cuenta Sabana para enviar mensajes.");
+      navigate('/login');
+      return;
+    }
+
+    const sellerEmail = selectedProduct.ownerEmail || "";
+    const sellerId = selectedProduct.user?.id || selectedProduct.sellerId || selectedProduct.userId || "";
+
+    const localChats = JSON.parse(localStorage.getItem('mock_chats') || '[]');
+    const chatId = `chat_${Date.now()}`;
+
+    const newChatRoom = {
+      id: chatId,
       productId: selectedProduct.id,
       productTitle: selectedProduct.title,
-      productImage: selectedProduct.imageUrl || selectedProduct.image,
-      buyerEmail: currentUserEmail,
+      productImage: selectedProduct.imageUrl,
+      buyerId: currentUserId || 'comprador_anon',
+      buyerEmail: currentUserEmail || '',
+      sellerId: sellerId,
       sellerEmail: sellerEmail,
-      senderEmail: currentUserEmail,
-      text: firstMessage.trim()
+      messages: [
+        {
+          id: `msg_${Date.now()}`,
+          senderId: currentUserId || 'comprador_anon',
+          senderEmail: currentUserEmail || '',
+          text: firstMessage,
+          timestamp: new Date().toISOString()
+        }
+      ]
     };
-  
-    socket.emit('join_room', roomId);
-    socket.emit('send_message', chatPayload);
-  
+
+    localChats.push(newChatRoom);
+    localStorage.setItem('mock_chats', JSON.stringify(localChats));
+
+    alert(`¡Mensaje enviado con éxito al vendedor! Podrás seguir respondiendo desde el botón de chats en el menú superior.`);
     setFirstMessage("");
     setShowContactModal(false);
-    setSelectedProduct(null);
-    
-    navigate('/chats', { state: { activeRoomId: roomId, userEmail: currentUserEmail } });
+    setSelectedProduct(null); // Cierra de igual forma el detalle del producto de manera limpia
   };
 
-  // SUBCOMPONENTE: Modal de Detalle de Producto y Reseñas
+  // Componente Modal de Detalle de Producto Unificado
   const ProductModal = ({ product, onClose }) => {
     if (!product) return null;
     
     const isOwner = checkIfOwner(product);
-    const ownerEmail = getProductOwnerEmail(product);
-    
-    const [sellerStats, setSellerStats] = useState({ fullName: "Miembro Sabana", totalSales: 0 });
+
+    // Estados locales para almacenar la info asincrónica del vendedor y sus reseñas
+    const [sellerStats, setSellerStats] = useState({ fullName: "Cargando...", totalSales: 0 });
     const [reviewData, setReviewData] = useState({ reviews: [], count: 0, average: null });
     const [loadingMetadata, setLoadingMetadata] = useState(true);
 
-    // CORRECCIÓN DE RESEÑAS: Validación estricta del email antes de consultar la API
     useEffect(() => {
-      if (!ownerEmail) {
-        setLoadingMetadata(false);
-        return;
-      }
+      if (!product.ownerEmail) return;
 
       const fetchMetadata = async () => {
         try {
-          const statsRes = await fetch(`${apiUrl}/api/v1/reviews/seller-stats/${ownerEmail}`);
+          // 1. Traer estadísticas del vendedor
+          const statsRes = await fetch(`${apiUrl}/api/v1/reviews/seller-stats/${product.ownerEmail}`);
           const statsData = statsRes.ok ? await statsRes.json() : { fullName: "Miembro Sabana", totalSales: 0 };
           
+          // 2. Traer reseñas del producto
           const reviewRes = await fetch(`${apiUrl}/api/v1/reviews/product/${product.id}`);
           const revData = reviewRes.ok ? await reviewRes.json() : { reviews: [], count: 0, average: null };
 
           setSellerStats(statsData);
           setReviewData(revData);
-        // Código corregido
         } catch (error) {
           console.error("Error al recopilar metadatos de reseñas:", error);
-        } finally { // <--- CORREGIDO
+        } finally {
           setLoadingMetadata(false);
         }
       };
 
       fetchMetadata();
-    }, [product, ownerEmail]);
+    }, [product]);
 
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
         
-        <div className="relative bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
+        {/* Contenedor adaptado con scroll vertical global interno para el modal */}
+        <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-300">
           
           <button onClick={onClose} className="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full text-sabana-blue hover:bg-sabana-blue hover:text-white transition-all shadow-md">
             <X size={20} />
           </button>
           
-          <div className="md:w-3/4 h-72 md:h-auto bg-sabana-light md:sticky md:top-0">
+          {/* LADO IZQUIERDO: Imagen Fija */}
+          <div className="md:w-1/2 h-64 md:h-auto bg-sabana-light md:sticky md:top-0">
             <img 
               src={product.imageUrl || logoSabana} 
               alt={product.title}
@@ -258,6 +261,7 @@ const PublicShowcase = () => {
             />
           </div>
           
+          {/* LADO DERECHO: Toda la información con scroll natural hacia abajo */}
           <div className="p-8 md:w-1/2 flex flex-col space-y-6">
             <div>
               <div className="flex gap-2 mb-3">
@@ -277,6 +281,7 @@ const PublicShowcase = () => {
               </p>
             </div>
 
+            {/* UNIFICACIÓN DE BLOQUE COMERCIAL: Mantiene el diseño estético agregando el botón de "Contactar" de tu rama */}
             <div className="bg-slate-50/80 border border-gray-100 p-4 rounded-2xl flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -284,6 +289,7 @@ const PublicShowcase = () => {
                   <p className="text-2xl font-black text-sabana-blue">{formatCurrency(product.price)}</p>
                 </div>
                 
+                {/* Agregado: Botón de contactar dinámico para iniciar chat */}
                 {!isOwner && (
                   <button 
                     onClick={() => {
@@ -315,37 +321,39 @@ const PublicShowcase = () => {
               </button>
             </div>
 
+            {/* SECCIÓN COMPAÑERO: Información Comercial del Vendedor */}
             <div className="border-t border-gray-100 pt-5 space-y-3">
               <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest flex items-center gap-1.5">
                 <UserCheck size={16} className="text-sabana-blue-light" /> Información del Vendedor
               </h3>
               
               <div className="bg-sabana-light/50 p-4 rounded-2xl border border-sabana-blue/5">
-                <p className="text-sm font-bold text-sabana-blue">{sellerStats.fullName || sellerStats.name || "Miembro Sabana"}</p>
+                <p className="text-sm font-bold text-sabana-blue">{sellerStats.fullName}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Ventas concretadas en campus: <span className="font-extrabold text-sabana-blue">{sellerStats.totalSales || 0}</span>
+                  Ventas concretadas en campus: <span className="font-extrabold text-sabana-blue">{sellerStats.totalSales}</span>
                 </p>
               </div>
             </div>
 
+            {/* SECCIÓN COMPAÑERO: Calificaciones y Reseñas con Scroll */}
             <div className="border-t border-gray-100 pt-5 space-y-4">
               <div className="flex justify-between items-baseline">
                 <h3 className="text-xs font-black text-sabana-blue uppercase tracking-widest">
                   Opiniones del Producto
                 </h3>
-                <span className="text-[10px] text-gray-400 font-bold">({reviewData.count || 0} reseñas)</span>
+                <span className="text-[10px] text-gray-400 font-bold">({reviewData.count} reseñas)</span>
               </div>
 
               {loadingMetadata ? (
                 <p className="text-xs text-gray-400 italic">Cargando reputación...</p>
               ) : (
                 <>
-                  {(!reviewData.count || reviewData.count < 10) ? (
+                  {reviewData.count < 10 ? (
                     <div className="flex items-start gap-3 bg-amber-50/60 border border-amber-200/60 p-4 rounded-2xl">
                       <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
                       <div>
                         <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white px-2 py-0.5 rounded-md">
-                          Vendedor Nuevo
+                          Comprador Nuevo
                         </span>
                         <p className="text-xs text-amber-900 font-medium mt-1.5 leading-snug">
                           Este vendedor aún no acumula las 10 calificaciones requeridas para calcular un promedio oficial en el campus.
@@ -354,17 +362,17 @@ const PublicShowcase = () => {
                     </div>
                   ) : (
                     <div className="flex items-center gap-3 bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl">
-                      <div className="bg-white px-3 py-2 rounded-xl border border-emerald-100 text-center shadow-sm">
+                      <div className="bg-white px-3 py-2 rounded-xl border border-emerald-100 text-center shadow-xs">
                         <span className="text-2xl font-black text-slate-800">{reviewData.average}</span>
                         <span className="text-[10px] text-gray-400 font-bold block">de 5</span>
                       </div>
                       <div>
-                        <div className="flex gap-0.5 text-yellow-500">
+                        <div className="flex gap-0.5 text-sabana-softGold">
                           {Array(5).fill(0).map((_, i) => (
                             <Star 
                               key={i} 
                               size={14} 
-                              className={i < Math.round(Number(reviewData.average)) ? 'fill-yellow-500 text-yellow-500' : 'text-gray-200'} 
+                              className={i < Math.round(Number(reviewData.average)) ? 'fill-sabana-softGold text-sabana-softGold' : 'text-gray-200'} 
                             />
                           ))}
                         </div>
@@ -373,8 +381,9 @@ const PublicShowcase = () => {
                     </div>
                   )}
 
+                  {/* Listado de comentarios */}
                   <div className="space-y-3 mt-2">
-                    {!reviewData.reviews || reviewData.reviews.length === 0 ? (
+                    {reviewData.reviews.length === 0 ? (
                       <p className="text-xs text-gray-400 italic py-2 text-center bg-slate-50 rounded-xl border border-dashed border-gray-100">
                         Aún no hay comentarios escritos sobre este artículo.
                       </p>
@@ -383,9 +392,9 @@ const PublicShowcase = () => {
                         <div key={rev.id} className="border-b border-gray-50 pb-3 last:border-0">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] font-bold text-sabana-blue/60">{rev.buyerEmail?.split('@')[0]}</span>
-                            <div className="flex text-yellow-500">
+                            <div className="flex text-sabana-softGold">
                               {Array(5).fill(0).map((_, i) => (
-                                <Star key={i} size={10} className={i < rev.rating ? 'fill-yellow-500 text-yellow-500' : 'text-gray-200'} />
+                                <Star key={i} size={10} className={i < rev.rating ? 'fill-sabana-softGold' : 'text-gray-200'} />
                               ))}
                             </div>
                           </div>
@@ -452,6 +461,7 @@ const PublicShowcase = () => {
               <button 
                 onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
                 className="absolute right-4 top-2.5 p-1 rounded-full text-white/50 hover:text-red-400 group-focus-within:text-sabana-blue/40 group-focus-within:hover:text-red-500 transition-all duration-200 z-10"
+                title="Limpiar búsqueda"
               >
                 <X size={18} strokeWidth={3} />
               </button>
@@ -475,6 +485,7 @@ const PublicShowcase = () => {
           )}
         </button>
 
+          {/* MANTENIDO: Botón de chats en el Navbar */}
           <div 
             onClick={handleChatNavigation} 
             className="relative cursor-pointer group" 
@@ -498,8 +509,18 @@ const PublicShowcase = () => {
                 role="button"
                 tabIndex={0}
                 onClick={() => {
-                  if (isLoggedIn) navigate('/userprofile');
-                  else navigate('/login');
+                  if (isLoggedIn || userData) {
+                    navigate('/userprofile');
+                  } else {
+                    navigate('/login');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (isLoggedIn || userData) navigate('/userprofile');
+                    else navigate('/login');
+                  }
                 }}
                 className="flex items-center gap-2 text-white group cursor-pointer hover:text-sabana-softGold transition-colors"
               >
@@ -511,9 +532,9 @@ const PublicShowcase = () => {
                 </span>
               </div>
 
-              {isLoggedIn && currentUserData?.name && (
+              {isLoggedIn && userData?.name && (
                 <span className="text-[10px] font-medium text-sabana-softGold/80 italic lowercase leading-none text-center mt-0.5">
-                  {currentUserData.name}
+                  {userData.name}
                 </span>
               )}
             </div>
@@ -522,6 +543,7 @@ const PublicShowcase = () => {
               <button
                 onClick={handleLogout}
                 className="ml-2 p-2 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all duration-300 self-center"
+                title="Cerrar Sesión"
               >
                 <LogOut size={18} />
               </button>
@@ -547,18 +569,21 @@ const PublicShowcase = () => {
         </div>
       </section>
 
-      {/* PRODUCTOS */}
       <main className="container mx-auto px-6 py-16">
+        {/* SECCIÓN MÁS POPULARES */}
         {sortedPopular.length > 0 && (
           <section className="mb-20 animate-in fade-in duration-500">
             {hasMyOwnProducts && (
               <button
                 onClick={() => navigate('/PersonalInventory')} 
                 className="mb-3 inline-flex items-center gap-2 px-4 py-1.5 bg-sabana-blue-light/10 border border-sabana-blue-light/300 text-sabana-blue-light text-xs font-black uppercase tracking-widest rounded-full cursor-pointer hover:bg-sabana-softGold/20 hover:scale-[1.02] active:scale-[0.98] transition-all group duration-200"
+                title="Ir a gestionar mis publicaciones"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-sabana-blue-light animate-pulse"></span>
                 Tienes productos publicados en el Marketplace
-                <span className="transform group-hover:translate-x-1 transition-transform inline-block ml-1 font-bold">→</span>
+                <span className="transform group-hover:translate-x-1 transition-transform inline-block ml-1 font-bold">
+                  →
+                </span>
               </button>
             )}
             <div className="flex items-center justify-between mb-8">
@@ -608,7 +633,9 @@ const PublicShowcase = () => {
                         <div 
                           onClick={(e) => handleAddToCartClick(e, product)}
                           className={`p-2 rounded-xl transition-colors cursor-pointer ${
-                            isOwner ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
+                            isOwner
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
                           }`}
                         >
                           <ShoppingCart size={18} />
@@ -622,83 +649,87 @@ const PublicShowcase = () => {
           </section>
         )}
 
+        {/* TODOS LOS PRODUCTOS */}
         <div className="flex items-center justify-between mb-12">
           <h2 className="text-3xl font-bold text-sabana-blue tracking-tight">Explorar Productos</h2>
           <div className="h-1 flex-1 mx-8 bg-sabana-blue/5 rounded-full"></div>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {loading ? (
-            Array(4).fill(0).map((_, i) => (
-              <div key={i} className="h-80 bg-gray-200 animate-pulse rounded-3xl" />
-            ))
-          ) : filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => {
-              const isOwner = checkIfOwner(product);
-              return (
-                <div 
-                  key={product.id} 
-                  onClick={() => setSelectedProduct(product)} 
-                  className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
-                      <img
-                        src={product.imageUrl || logoSabana}
-                        alt={product.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        onError={(e) => { e.target.src = logoSabana; }}
-                      />
-                    </div>
-                    <div className="px-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
-                          {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
-                        </span>
-                        <span className={`text-[10px] font-bold uppercase transition-all ${
-                          product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'
-                        }`}>
-                          {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
-                    </div>
+        {loading ? (
+          Array(4).fill(0).map((_, i) => (
+            <div key={i} className="h-80 bg-gray-200 animate-pulse rounded-3xl" />
+          ))
+        ) : filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => {
+            const isOwner = checkIfOwner(product);
+            return (
+              <div 
+                key={product.id} 
+                onClick={() => setSelectedProduct(product)} 
+                className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-transparent hover:border-sabana-softGold/20 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-sabana-light">
+                    <img
+                      src={product.imageUrl || logoSabana}
+                      alt={product.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => { e.target.src = logoSabana; }}
+                    />
                   </div>
+                  <div className="px-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-sabana-blue-light uppercase tracking-widest">
+                        {CATEGORY_LABELS[product.category] || product.category || 'Otros'}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase transition-all ${
+                        product.stock === 1 ? 'text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded-md' : 'text-gray-400'
+                      }`}>
+                        {product.stock === 1 ? '¡Última unidad!' : `${product.stock || 0} disp.`}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-sabana-blue mt-1 line-clamp-1">{product.title}</h3>
+                  </div>
+                </div>
 
-                  <div className="px-2 mt-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
-                      <div 
-                        onClick={(e) => handleAddToCartClick(e, product)}
-                        className={`p-2 rounded-xl transition-colors ${
-                          isOwner ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
-                        }`}
-                      >
-                        <ShoppingCart size={18} />
-                      </div>
+                <div className="px-2 mt-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xl font-bold text-sabana-blue">{formatCurrency(product.price)}</p>
+                    <div 
+                      onClick={(e) => handleAddToCartClick(e, product)}
+                      className={`p-2 rounded-xl transition-colors ${
+                        isOwner
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-sabana-light text-sabana-blue hover:bg-sabana-blue hover:text-white"
+                      }`}
+                    >
+                      <ShoppingCart size={18} />
                     </div>
                   </div>
                 </div>
-              );
-            })
-          ) : (
-            <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-white rounded-[40px] shadow-sm border border-dashed border-gray-200 animate-in fade-in zoom-in duration-500">
-              <div className="bg-sabana-light p-6 rounded-full mb-6">
-                <Search size={48} className="text-sabana-blue/20" />
               </div>
-              <h3 className="text-2xl font-bold text-sabana-blue mb-2">No encontramos nada...</h3>
-              <p className="text-gray-500 max-w-md mx-auto mb-8 px-6">
-                No hay productos que coincidan con tu búsqueda actual "<span className="font-bold text-sabana-blue-light">{searchTerm}</span>".
-              </p>
-              <button 
-                onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
-                className="bg-sabana-blue text-white px-8 py-3 rounded-2xl font-bold hover:bg-sabana-blue-hover transition-all active:scale-95 shadow-lg shadow-sabana-blue/20"
-              >
-                Ver todos los productos
-              </button>
+            );
+          })
+        ) : (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-white rounded-[40px] shadow-sm border border-dashed border-gray-200 animate-in fade-in zoom-in duration-500">
+            <div className="bg-sabana-light p-6 rounded-full mb-6">
+              <Search size={48} className="text-sabana-blue/20" />
             </div>
-          )}
-        </div>
+            <h3 className="text-2xl font-bold text-sabana-blue mb-2">No encontramos nada...</h3>
+            <p className="text-gray-500 max-w-md mx-auto mb-8 px-6">
+              No hay productos que coincidan con tu búsqueda actual "<span className="font-bold text-sabana-blue-light">{searchTerm}</span>" 
+              {selectedCategory !== "ALL" && ` en la categoría ${CATEGORY_LABELS[selectedCategory]}`}.
+            </p>
+            <button 
+              onClick={() => {setSearchTerm(""); setSelectedCategory("ALL");}}
+              className="bg-sabana-blue text-white px-8 py-3 rounded-2xl font-bold hover:bg-sabana-blue-hover transition-all active:scale-95 shadow-lg shadow-sabana-blue/20"
+            >
+              Ver todos los productos
+            </button>
+          </div>
+        )}
+      </div>
       </main>
 
       {/* FOOTER */}
@@ -715,6 +746,8 @@ const PublicShowcase = () => {
               <h4 className="font-bold mb-6 text-sabana-softGold uppercase tracking-widest text-xs">Marketplace</h4>
               <ul className="space-y-4 text-sm text-white/80">
                 <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Todos los productos</li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Publicar artículo</li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Términos y condiciones</li>
               </ul>
             </div>
             <div>
@@ -723,6 +756,7 @@ const PublicShowcase = () => {
                 <li className="flex items-center gap-2 hover:text-sabana-softGold cursor-pointer transition-colors">
                     Campus Chía <ExternalLink size={14} />
                 </li>
+                <li className="hover:text-sabana-softGold cursor-pointer transition-colors">Directorio Estudiantil</li>
               </ul>
             </div>
             <div>
@@ -737,12 +771,15 @@ const PublicShowcase = () => {
               <p className="text-xs text-white/40 font-bold">© 2026 Universidad de La Sabana</p>
             </div>
           </div>
+          <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.3em]">
+            Personas que inspiran personas - Marketplace
+          </div>
         </div>
       </footer>
 
-      {/* MODALES */}
       <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
 
+      {/* MANTENIDO: Formulario submodal flotante para la redacción del mensaje inicial */}
       {showContactModal && selectedProduct && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
