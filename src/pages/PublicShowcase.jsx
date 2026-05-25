@@ -40,10 +40,18 @@ const PublicShowcase = () => {
   };
 
   const hasMyOwnProducts = useMemo(() => {
-    if (!user || !user.email) return false;
-    return products.some(p => p.ownerEmail && p.ownerEmail.toLowerCase() === user.email.toLowerCase());
-  }, [products, user]);
-
+    // 1. Priorizamos el user del contexto
+    // 2. Si es null, buscamos en el localStorage directamente
+    const savedUser = localStorage.getItem('user');
+    const userEmail = (user?.email || (savedUser ? JSON.parse(savedUser).email : null))?.toLowerCase().trim();
+    
+    if (!userEmail || !products || products.length === 0) return false;
+  
+    return products.some(product => 
+      product.ownerEmail && 
+      product.ownerEmail.toLowerCase().trim() === userEmail
+    );
+  }, [products, user]); // Al incluir 'user', esto se recalculará cuando el contexto cargue
   // Fetch de productos reales desde el Backend
   useEffect(() => {
     let isMounted = true;
@@ -241,6 +249,7 @@ const PublicShowcase = () => {
     }, [product]);
 
     return (
+
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-sabana-blue/40 backdrop-blur-md" onClick={onClose} />
         
@@ -570,10 +579,7 @@ const PublicShowcase = () => {
       </section>
 
       <main className="container mx-auto px-6 py-16">
-        {/* SECCIÓN MÁS POPULARES */}
-        {sortedPopular.length > 0 && (
-          <section className="mb-20 animate-in fade-in duration-500">
-            {hasMyOwnProducts && (
+      {hasMyOwnProducts && (
               <button
                 onClick={() => navigate('/PersonalInventory')} 
                 className="mb-3 inline-flex items-center gap-2 px-4 py-1.5 bg-sabana-blue-light/10 border border-sabana-blue-light/300 text-sabana-blue-light text-xs font-black uppercase tracking-widest rounded-full cursor-pointer hover:bg-sabana-softGold/20 hover:scale-[1.02] active:scale-[0.98] transition-all group duration-200"
@@ -586,6 +592,10 @@ const PublicShowcase = () => {
                 </span>
               </button>
             )}
+        {/* SECCIÓN MÁS POPULARES */}
+        {sortedPopular.length > 0 && (
+          <section className="mb-20 animate-in fade-in duration-500">
+            
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl font-black text-sabana-blue tracking-tight">Más populares en el campus</h2>

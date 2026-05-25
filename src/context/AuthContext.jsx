@@ -15,7 +15,23 @@ export const AuthProvider = ({ children }) => {
 
   // Lo dejamos en false por defecto para que las rutas protegidas 
   // no crean que está cargando y te boten al login inmediatamente.
-  const [loading, setLoading] = useState(false); 
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+        setIsLoggedIn(true);
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    };
+  
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const login = (userData) => {
     const emailNormalizado = (userData?.email || '').toLowerCase().trim();
