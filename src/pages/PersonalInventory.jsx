@@ -1,12 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, ArrowLeft, Pencil, Clock, CheckCircle2, ShoppingBag, User, X, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, ArrowLeft, Pencil, Clock, CheckCircle2, ShoppingBag, User, X, AlertCircle, Star } from 'lucide-react';
 import smallLogo from '../assets/sabanalogo.png'; 
 import { useAuth } from '../context/AuthContext';
 
 const PersonalInventory = () => {
   const navigate = useNavigate();
-  // Traemos 'updateUserRole' para mantener viva la sincronización de roles del código viejo
   const { user, updateUserRole } = useAuth();
   
   const [products, setProducts] = useState([]);
@@ -16,13 +15,14 @@ const PersonalInventory = () => {
   const [loadingSales, setLoadingSales] = useState(false); 
   const [editingProduct, setEditingProduct] = useState(null);
   
+  const [selectedProductReviews, setSelectedProductReviews] = useState(null);
+  
   const apiUrl = import.meta.env.VITE_API_URL;
 
   const handleUpdateProduct = (updatedProduct) => {
     setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
 
-  // Traer Inventario de Productos (Funcionalidad Completa Vieja)
   const fetchProducts = async () => {
     if (!user || !user.email) {
       navigate('/login');
@@ -34,7 +34,6 @@ const PersonalInventory = () => {
         const data = await response.json();
         setProducts(data);
         
-        // Sincronización automática de roles según stock / catálogo activo
         if (data.length > 0 && user.role === 'USER') {
           updateUserRole('SELLER');
         } else if (data.length === 0 && user.role === 'SELLER') {
@@ -48,7 +47,6 @@ const PersonalInventory = () => {
     }
   };
 
-  // Traer Cola de Ventas del Vendedor (Función Nueva)
   const fetchSalesQueue = async () => {
     if (!user?.email) return;
     setLoadingSales(true);
@@ -72,7 +70,6 @@ const PersonalInventory = () => {
     }
   }, [user, navigate]);
 
-  // Cambiar estado a Entregado en el Backend (Función Nueva)
   const handleMarkAsDelivered = async (orderId) => {
     try {
       const response = await fetch(`${apiUrl}/api/v1/orders/${orderId}/status`, {
@@ -92,7 +89,6 @@ const PersonalInventory = () => {
     }
   };
 
-  // Eliminar producto (Mezcla de confirmación robusta y actualización de roles)
   const handleDeleteProduct = async (id) => {
     if (window.confirm("¿Seguro que quieres borrar este producto? Esta acción no se puede deshacer y modificará tu catálogo.")) {
       try {
@@ -101,7 +97,6 @@ const PersonalInventory = () => {
           const updatedProducts = products.filter(product => product.id !== id);
           setProducts(updatedProducts);
           
-          // Reevaluar rol si el catálogo se queda en 0 tras eliminar
           if (updatedProducts.length === 0 && user?.role === 'SELLER') {
             updateUserRole('USER');
           }
@@ -126,14 +121,10 @@ const PersonalInventory = () => {
         </div>
         
         <button onClick={() => {
-              // Revisamos la URL de la página inmediatamente anterior en el navegador
               const previousPage = document.referrer;
-
-              // Si la página de la que viene incluye 'create-product', lo mandamos al perfil seguro
               if (previousPage.includes('create-product')) {
                 navigate('/userprofile');
               } else {
-                // Si viene de cualquier otra parte (del home, del perfil, etc.), hacemos el atrás normal
                 navigate(-1);
               }
             }} className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-sabana-blue-light bg-white/5 border border-white/20 hover:bg-white/10 hover:text-white px-4 py-2 rounded-xl transition-all">
@@ -187,9 +178,8 @@ const PersonalInventory = () => {
           </button>
         </div>
 
-        {/* RENDERIZADO DE CONTENIDO SEGÚN LA PESTAÑA SELECCIONADA */}
+        {/* RENDERIZADO DE CONTENIDO */}
         {activeTab === 'inventory' ? (
-          /* ================= PESTAÑA 1: INVENTARIO DE PRODUCTOS ================= */
           <div className="space-y-4">
             {loading ? (
               <p className="text-center py-10 text-xs font-bold text-gray-400 uppercase tracking-widest">Cargando tu inventario...</p>
@@ -202,11 +192,11 @@ const PersonalInventory = () => {
               products.map((product) => (
                 <div key={product.id} className="bg-white p-5 rounded-3xl shadow-sabana-card border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 animate-fadeIn">
                   <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                  <img 
-                    src={product.imageUrl && product.imageUrl.trim() !== '' ? product.imageUrl : smallLogo} 
-                    alt={product.title} 
-                    className="w-16 h-16 object-cover rounded-2xl border border-gray-200 shrink-0 bg-slate-50 p-1" 
-                  />
+                    <img 
+                      src={product.imageUrl && product.imageUrl.trim() !== '' ? product.imageUrl : smallLogo} 
+                      alt={product.title} 
+                      className="w-16 h-16 object-cover rounded-2xl border border-gray-200 shrink-0 bg-slate-50 p-1" 
+                    />
                     <div className="text-center sm:text-left">
                       <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight line-clamp-1">{product.title}</h3>
                       <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 font-medium">{product.description}</p>
@@ -224,8 +214,17 @@ const PersonalInventory = () => {
                       <p className="bg-sabana-light text-sabana-blue px-2.5 py-0.5 rounded-lg text-xs font-black mt-0.5">{product.stock}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => setEditingProduct(product)} className="p-2.5 rounded-xl bg-slate-50 border border-gray-200 text-gray-500 hover:text-sabana-blue hover:bg-sabana-light hover:border-transparent transition-all"><Pencil size={16} /></button>
-                      <button onClick={() => handleDeleteProduct(product.id)} className="p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 hover:bg-rose-100 transition-all"><Trash2 size={16} /></button>
+                      {/* Ver Reseñas del Producto */}
+                      <button 
+                        onClick={() => setSelectedProductReviews(product)} 
+                        title="Ver Reseñas del Producto"
+                        className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-500 hover:text-amber-600 hover:bg-amber-100 transition-all flex items-center gap-1"
+                      >
+                        <Star size={16} fill="currentColor" />
+                      </button>
+
+                      <button onClick={() => setEditingProduct(product)} title="Editar Producto" className="p-2.5 rounded-xl bg-slate-50 border border-gray-200 text-gray-500 hover:text-sabana-blue hover:bg-sabana-light hover:border-transparent transition-all"><Pencil size={16} /></button>
+                      <button onClick={() => handleDeleteProduct(product.id)} title="Eliminar Producto" className="p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 hover:bg-rose-100 transition-all"><Trash2 size={16} /></button>
                     </div>
                   </div>
                 </div>
@@ -235,6 +234,7 @@ const PersonalInventory = () => {
         ) : (
           /* ================= PESTAÑA 2: COLA DE VENTAS ================= */
           <div className="space-y-4">
+            {/* ... Se mantiene exactamente igual a tu código previo ... */}
             {loadingSales ? (
               <p className="text-center py-10 text-xs font-bold text-gray-400 uppercase tracking-widest">Cargando cola de ventas...</p>
             ) : sales.length === 0 ? (
@@ -278,11 +278,11 @@ const PersonalInventory = () => {
                       <div key={idx} className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-2xl border border-gray-100 text-xs">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg border bg-white overflow-hidden flex items-center justify-center shrink-0">
-                          <img 
-                            src={item.imageUrl && item.imageUrl.trim() !== '' ? item.imageUrl : smallLogo} 
-                            alt={item.title} 
-                            className="w-full h-full object-cover p-0.5" 
-                          />
+                            <img 
+                              src={item.imageUrl && item.imageUrl.trim() !== '' ? item.imageUrl : smallLogo} 
+                              alt={item.title} 
+                              className="w-full h-full object-cover p-0.5" 
+                            />
                           </div>
                           <div>
                             <p className="font-black text-slate-800 uppercase tracking-tight">{item.title || `Artículo ID: ${item.productId}`}</p>
@@ -315,7 +315,6 @@ const PersonalInventory = () => {
         Personas que inspiran personas — Universidad de La Sabana
       </footer>
 
-      {/* MODAL DE EDICIÓN COMPLETO CON VALIDACIONES ROBUSTAS VIEJAS */}
       {editingProduct && (
         <EditModal 
           product={editingProduct} 
@@ -324,6 +323,112 @@ const PersonalInventory = () => {
           apiUrl={apiUrl}
         />
       )}
+
+      {/* Renderizado condicional del visualizador de reseñas */}
+      {selectedProductReviews && (
+        <ReviewsModal 
+          product={selectedProductReviews} 
+          onClose={() => setSelectedProductReviews(null)} 
+          apiUrl={apiUrl}
+        />
+      )}
+    </div>
+  );
+};
+
+/* ================= SUB-COMPONENTE NUEVO: VISUALIZADOR DE RESEÑAS ================= */
+const ReviewsModal = ({ product, onClose, apiUrl }) => {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProductReviews = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/v1/reviews/product/${product.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          // El backend exige sacar la propiedad '.reviews' que es el Array
+          setReviews(data.reviews || []);
+        } else {
+          setReviews([]);
+        }
+      } catch (error) {
+        console.error("Error cargando calificaciones:", error);
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (product?.id) {
+      fetchProductReviews();
+    }
+  }, [product, apiUrl]);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+      <div className="bg-white p-6 rounded-3xl max-w-lg w-full space-y-4 shadow-2xl flex flex-col max-h-[80vh]">
+        
+        {/* Header del modal */}
+        <div className="flex justify-between items-center border-b pb-3 shrink-0">
+          <div>
+            <h3 className="font-roboto-slab font-black text-sabana-blue uppercase tracking-wide text-sm">Reseñas recibidas</h3>
+            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight line-clamp-1">{product.title}</p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full text-gray-400 hover:text-gray-700 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Cuerpo / Lista de comentarios */}
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+          {loading ? (
+            <p className="text-center py-6 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cargando comentarios...</p>
+          ) : reviews.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <Star className="mx-auto text-gray-200" size={32} />
+              <p className="text-xs font-bold text-slate-500">Este producto aún no cuenta con calificaciones de compradores.</p>
+            </div>
+          ) : (
+            reviews.map((rev, index) => (
+              <div key={rev.id || index} className="bg-slate-50 p-4 rounded-2xl border border-gray-100 space-y-1.5 text-xs">
+                <div className="flex justify-between items-center">
+                  {/* El backend guarda el email en 'buyerEmail' */}
+                  <span className="font-black text-sabana-blue text-[11px]">{rev.buyerEmail || 'Estudiante Sabana'}</span>
+                  <div className="flex items-center text-amber-400 gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        size={12} 
+                        fill={i < rev.rating ? "currentColor" : "none"} 
+                        className={i < rev.rating ? "text-amber-400" : "text-gray-200"}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {/* El backend guarda el comentario en la propiedad 'comment' */}
+                <p className="text-slate-600 font-medium leading-relaxed italic">"{rev.comment || 'Sin comentario escrito.'}"</p>
+                {rev.date && (
+                  <p className="text-[9px] text-gray-400 font-bold text-right">
+                    {new Date(rev.date).toLocaleDateString('es-CO')}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Botón de cierre inferior */}
+        <div className="pt-2 shrink-0 border-t">
+          <button 
+            onClick={onClose}
+            className="w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-slate-200 transition-colors"
+          >
+            Cerrar Ventana
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 };
