@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, ArrowLeft, Pencil, Clock, CheckCircle2, ShoppingBag, User, X, AlertCircle, Star } from 'lucide-react';
+import { Trash2, Plus, ArrowLeft, Pencil, Clock, CheckCircle2, ShoppingBag, User, X, AlertCircle, Star, Hand } from 'lucide-react';
 import smallLogo from '../assets/sabanalogo.png'; 
 import { useAuth } from '../context/AuthContext';
 
@@ -54,7 +54,9 @@ const PersonalInventory = () => {
       const response = await fetch(`${apiUrl}/api/v1/orders/seller/${user.email}`);
       if (response.ok) {
         const data = await response.json();
-        setSales(data);
+        // Ordenar las ventas de la más reciente a la más antigua
+        const sortedData = data.sort((a, b) => b.id - a.id);
+        setSales(sortedData);
       }
     } catch (error) {
       console.error("Error cargando cola de ventas:", error);
@@ -72,22 +74,32 @@ const PersonalInventory = () => {
 
   // ACTUALIZACIÓN MEDIANTE EL MÉTODO PATCH SOLICITADO POR EL BACKEND
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    if (!newStatus) return;
+    
     try {
       const response = await fetch(`${apiUrl}/api/v1/orders/${orderId}/status`, {
-        method: 'PATCH', // Cambiado de PUT a PATCH para sincronizarse con orderRoutes.js
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        // 🚨 CORRECCIÓN CRUCIAL: Cambiar de { newStatus } a { status: newStatus }
         body: JSON.stringify({ status: newStatus })
       });
-
+  
       if (response.ok) {
-        setSales(sales.map(sale => sale.id === orderId ? { ...sale, status: newStatus } : sale));
-        if (newStatus === 'READY_FOR_DELIVERY') {
+        // Actualiza localmente el estado de las ventas
+        setSales(prevSales => 
+          prevSales.map(sale => sale.id === orderId ? { ...sale, status: newStatus } : sale)
+        );
+        
+        if (newStatus === 'LISTO') {
           alert("¡Pedido marcado como listo! El comprador ya puede visualizarlo en su historial.");
         } else if (newStatus === 'ENTREGADO') {
           alert("¡Pedido marcado como entregado con éxito!");
         }
       } else {
-        alert("No se pudo actualizar el estado de la orden.");
+        const errorText = await response.text();
+        alert(`Error al actualizar el estado: ${errorText}`);
       }
     } catch (error) {
       console.error("Error actualizando orden:", error);
@@ -253,7 +265,11 @@ const PersonalInventory = () => {
                   <div 
                     key={sale.id} 
                     className={`bg-white p-5 rounded-3xl shadow-sabana-card border transition-all flex flex-col gap-4 animate-fadeIn ${
-                      isFinalState ? 'border-emerald-100 bg-emerald-50/10 opacity-75' : 'border-gray-100'
+                      isFinalState 
+                        ? 'border-emerald-100 bg-emerald-50/10 opacity-75' 
+                        : sale.status === 'QUIERO_MI_PRODUCTO'
+                        ? 'border-purple-200 bg-purple-50/10 shadow-purple-100/50'
+                        : 'border-gray-100'
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
@@ -266,16 +282,21 @@ const PersonalInventory = () => {
                       </div>
 
                       <div>
+                        {/* Renderizado e Identidades de los 3 pasos de estados en el Vendedor */}
                         {isFinalState ? (
                           <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider">
                             <CheckCircle2 size={12} /> Entregado
                           </span>
-                        ) : sale.status === 'READY_FOR_DELIVERY' ? (
-                          <span className="flex items-center gap-1 text-[10px] font-black text-amber-500 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">
+                        ) : sale.status === 'QUIERO_MI_PRODUCTO' ? (
+                          <span className="flex items-center gap-1 text-[10px] font-black text-purple-700 bg-purple-100 border border-purple-200 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse shadow-sm">
+                            <Hand size={12} className="rotate-12" /> ¡Comprador esperando en campus!
+                          </span>
+                        ) : sale.status === 'READY_FOR_DELIVERY' || sale.status === 'LISTO' ? (
+                          <span className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full uppercase tracking-wider">
                             <Clock size={12} /> Listo para entrega
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                          <span className="flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full uppercase tracking-wider">
                             <Clock size={12} /> Por Alistar
                           </span>
                         )}
@@ -304,9 +325,11 @@ const PersonalInventory = () => {
                       ))}
                     </div>
 
-                    {/* CONTROL DE BOTONES DINÁMICOS DEL VENDEDOR */}
+                    {/* CONTROL DE BOTONES DINÁMICOS REDISEÑADO PARA EL NUEVO FLUJO */}
                     <div className="pt-2 flex justify-end gap-2">
-                      {sale.status !== 'READY_FOR_DELIVERY' && !isFinalState && (
+                      
+                      {/* PASO 1: Si la orden está PENDIENTE, el vendedor avisa que ya la preparó */}
+                      {sale.status !== 'READY_FOR_DELIVERY' && sale.status !== 'LISTO' && sale.status !== 'QUIERO_MI_PRODUCTO' && !isFinalState && (
                         <button
                           onClick={() => handleUpdateOrderStatus(sale.id, 'READY_FOR_DELIVERY')}
                           className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-sabana-blue text-white hover:bg-sabana-blue-hover active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
@@ -315,18 +338,30 @@ const PersonalInventory = () => {
                         </button>
                       )}
                       
-                      {sale.status === 'READY_FOR_DELIVERY' && (
-                        <span className="text-[11px] font-black uppercase bg-slate-100 text-slate-500 px-4 py-2.5 rounded-xl border border-slate-200 cursor-not-allowed">
+                      {/* PASO 2: Si ya está LISTO pero el comprador no ha presionado su botón, se congela a la espera */}
+                      {(sale.status === 'READY_FOR_DELIVERY' || sale.status === 'LISTO') && (
+                        <span className="text-[11px] font-black uppercase bg-slate-100 text-slate-400 px-4 py-2.5 rounded-xl border border-slate-200 cursor-not-allowed tracking-wide">
                           ⏰ Esperando confirmación del comprador
                         </span>
                       )}
 
-                      {!isFinalState && (
+                      {/* PASO 3: Punto de encuentro presencial. El comprador ya avisó. Se habilita el botón definitivo */}
+                      {sale.status === 'QUIERO_MI_PRODUCTO' && (
                         <button
                           onClick={() => handleUpdateOrderStatus(sale.id, 'ENTREGADO')}
-                          className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                          className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-purple-600 text-white hover:bg-purple-700 active:scale-[0.98] px-5 py-2.5 rounded-xl transition-all shadow-md animate-bounce"
                         >
-                          <CheckCircle2 size={14} /> Forzar Entrega Completa
+                          <CheckCircle2 size={14} /> Confirmar Entrega Física
+                        </button>
+                      )}
+
+                      {/* BOTÓN AUXILIAR DE CONTINGENCIA (Mantiene la función de forzar/limpiar por seguridad administrativa) */}
+                      {!isFinalState && sale.status !== 'QUIERO_MI_PRODUCTO' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(sale.id, 'ENTREGADO')}
+                          className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] px-4 py-2.5 rounded-xl transition-all shadow-sm opacity-60 hover:opacity-100"
+                        >
+                          <CheckCircle2 size={14} /> Forzar Entrega
                         </button>
                       )}
                     </div>

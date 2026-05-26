@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Settings, ArrowLeft, Store, Clock, X, ShoppingBag, Star } from 'lucide-react';
+import { Package, Settings, ArrowLeft, Store, Clock, X, ShoppingBag, Star, Hand, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const UserProfile = () => {
@@ -25,18 +25,21 @@ const UserProfile = () => {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
-  // Estados para el formulario de reseña activa (Mantenido de tu lógica original)
+  // Estado para evitar clicks duplicados y manejar la carga de actualización de estado
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
+  // Estados para el formulario de reseña activa (Mantenido de HEAD)
   const [activeReviewProd, setActiveReviewProd] = useState(null); // Guarda { orderId, productId, sellerEmail }
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
+  const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // Protección de ruta estricta (Combinación segura de ambas ramas)
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !user || !user.email) {
       navigate('/login');
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, user, navigate]);
 
   const fetchPurchaseHistory = async () => {
     if (!user?.email) return;
@@ -45,341 +48,369 @@ const UserProfile = () => {
       const response = await fetch(`${apiUrl}/api/v1/orders/user/${user.email}`);
       if (response.ok) {
         const data = await response.json();
-        setOrders(data);
+        // Ordenar de manera descendente (la más reciente primero)
+        const sortedData = data.sort((a, b) => b.id - a.id);
+        setOrders(sortedData);
       }
     } catch (error) {
-      console.error("Error al cargar historial de compras:", error);
+      console.error("Error al traer el historial de compras:", error);
     } finally {
       setLoadingOrders(false);
     }
   };
 
-  // CONFIRMACIÓN DE ENTREGA POR PARTE DEL COMPRADOR (SINCRONIZADO CON EL PATCH DEL BACKEND)
-  const handleConfirmDelivery = async (orderId) => {
+  // Nueva función para el flujo coordinado: Comprador solicita encuentro presencial en campus
+  const handleQuieroMiProducto = async (orderId) => {
+    setUpdatingOrderId(orderId);
     try {
       const response = await fetch(`${apiUrl}/api/v1/orders/${orderId}/status`, {
-        method: 'PATCH', // Cambiado a PATCH para que coincida exactamente con orderRoutes.js
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'DELIVERED' })
+        body: JSON.stringify({ status: 'QUIERO_MI_PRODUCTO' })
       });
 
       if (response.ok) {
-        // Actualizamos localmente el estado de la orden para mutar la interfaz inmediatamente
+        // Actualizar el estado localmente de inmediato para reflejar la animación del badge
         setOrders(prevOrders => 
-          prevOrders.map(order => order.id === orderId ? { ...order, status: 'DELIVERED' } : order)
+          prevOrders.map(o => o.id === orderId ? { ...o, status: 'QUIERO_MI_PRODUCTO' } : o)
         );
-        alert("¡Entrega confirmada! Ahora puedes calificar el servicio del vendedor.");
       } else {
-        alert("No se pudo confirmar la recepción del producto.");
+        alert("No se pudo procesar la solicitud del producto.");
       }
     } catch (error) {
-      console.error("Error al confirmar entrega:", error);
-      alert("Error de conexión al procesar la entrega.");
+      console.error("Error al actualizar estado de la orden:", error);
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
-  const handleReviewSubmit = async (e) => {
+  // Lógica para enviar la reseña al Backend (Mantenido de HEAD)
+  const handleSendReview = async (e) => {
     e.preventDefault();
-    if (!activeReviewProd) return;
-    if (rating === 0) {
-      alert("Por favor selecciona una calificación en estrellas.");
-      return;
-    }
-
+    if (!comment.trim()) return alert("Por favor escribe un comentario para tu reseña.");
+    
     setSubmittingReview(true);
     try {
       const response = await fetch(`${apiUrl}/api/v1/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId: activeReviewProd.orderId,
           productId: activeReviewProd.productId,
+          rating,
+          comment: comment.trim(),
           buyerEmail: user.email,
-          sellerEmail: activeReviewProd.sellerEmail,
-          rating: rating,
-          comment: comment.trim()
+          sellerEmail: activeReviewProd.sellerEmail
         })
       });
 
       if (response.ok) {
-        alert("¡Muchas gracias! Tu reseña ha sido guardada exitosamente.");
+        alert("¡Tu reseña ha sido guardada con éxito!");
+        
+        // Guardar persistencia local para marcar este artículo específico como calificado
+        localStorage.setItem(`reviewed_${activeReviewProd.orderId}_${activeReviewProd.productId}`, 'true');
+
         setActiveReviewProd(null);
-        setRating(0);
         setComment("");
-        // Refrescar historial para reflejar los cambios
-        fetchPurchaseHistory();
+        setRating(5);
       } else {
-        const errData = await response.json().catch(() => ({}));
-        alert(errData.message || "No se pudo procesar tu calificación en este momento.");
+        alert("No se pudo enviar la calificación.");
       }
     } catch (error) {
       console.error("Error al enviar reseña:", error);
-      alert("Error crítico de red al intentar enviar tu reseña.");
     } finally {
       setSubmittingReview(false);
     }
   };
 
-  if (!isLoggedIn || !user) return null;
+  if (!isLoggedIn || !user || !user.email) return null;
 
   const isSellerOrAdmin = user.role === 'SELLER' || user.role === 'ADMIN';
 
   return (
-    <div className="min-h-screen bg-sabana-light p-6 font-roboto">
-      {/* BOTÓN SUPERIOR VOLVER */}
+    <div className="min-h-screen bg-sabana-light p-6">
+      {/* Botón de retorno al Home */}
       <div className="flex justify-end w-full max-w-4xl mx-auto">
         <button 
-          onClick={() => navigate('/publicshowcase')} 
-          className="flex items-center gap-2 text-sabana-blue font-bold mb-6 hover:text-sabana-blue-hover transition-colors text-xs uppercase tracking-wider"
+          onClick={() => navigate('/home')} 
+          className="flex items-center gap-2 text-sabana-blue font-bold mb-6 hover:text-sabana-blue-hover transition-colors"
         >
-          <ArrowLeft size={16} /> Volver al Marketplace
+          <ArrowLeft size={20} /> Volver al Marketplace
         </button>
       </div>
 
-      {/* TARJETA DE PERFIL CENTRAL */}
-      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-sabana-card overflow-hidden border border-gray-100">
+      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm overflow-hidden">
+        {/* Banner Superior */}
         <div className="bg-sabana-blue p-8 text-white relative">
-          <div className="flex flex-col md:flex-row gap-6 items-center">
-            <div className="w-24 h-24 rounded-full bg-sabana-softGold/20 border-2 border-sabana-softGold flex items-center justify-center font-black text-3xl text-sabana-softGold uppercase shadow-inner">
-              {user.name?.[0] || 'U'}{user.lastName?.[0] || 'S'}
+          <div className="flex flex-col md:flex-row gap-6 items-center z-10 relative">
+            <div className="w-24 h-24 rounded-full bg-sabana-softGold/20 border-2 border-sabana-softGold flex items-center justify-center font-black text-3xl text-sabana-softGold uppercase">
+              {user.name?.[0]}{user.lastName?.[0]}
             </div>
-            <div className="text-center md:text-left space-y-1">
-              <h1 className="text-2xl font-roboto-slab font-black tracking-tight uppercase">
+            <div className="text-center md:text-left">
+              <h1 className="text-3xl font-black tracking-tight uppercase">
                 {user.name} {user.lastName}
               </h1>
-              <p className="text-sabana-softGold font-bold text-xs tracking-wide uppercase">{user.career || 'Estudiante Sabana'}</p>
-              <div className="pt-1">
-                <span className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/10">
-                  Rol: {user.role}
-                </span>
+              <p className="text-sabana-softGold font-medium text-sm tracking-wide">{user.career}</p>
+              <div className="mt-2 inline-block bg-white/10 px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase text-white/90">
+                {user.role}
               </div>
             </div>
           </div>
         </div>
 
-        {/* SECCIÓN DE OPERACIONES */}
+        {/* Contenido del Perfil */}
         <div className="p-8">
-          <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-6">Mi Cuenta Universitaria</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
+          <h2 className="text-xl font-bold text-sabana-blue mb-6">Mi Cuenta</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div 
-              onClick={() => setShowMgmtModal(true)} 
-              className="border border-gray-200/80 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue hover:shadow-md transition-all group bg-slate-50/30 flex flex-col items-center text-center"
+              onClick={() => setShowMgmtModal(true)}
+              className="border border-sabana-blue-light/40 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue transition-all group"
             >
-              <ShoppingBag className="text-sabana-blue mb-3 group-hover:scale-110 transition-transform" size={28} />
-              <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Gestión del Campus</h3>
-              <p className="text-[11px] text-gray-400 mt-1 font-medium">Inventarios, ventas y estados de despachos.</p>
+              <ShoppingBag className="text-sabana-blue mb-4 group-hover:scale-110 transition-transform" size={32} />
+              <h3 className="font-bold text-sabana-blue">Gestión de Productos</h3>
+              <p className="text-sm text-gray-500">Administra tus ventas, inventario e historial de compras</p>
             </div>
 
-            <div 
-              onClick={() => { setShowHistoryModal(true); fetchPurchaseHistory(); }} 
-              className="border border-gray-200/80 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue hover:shadow-md transition-all group bg-slate-50/30 flex flex-col items-center text-center"
-            >
-              <Clock className="text-sabana-blue mb-3 group-hover:scale-110 transition-transform" size={28} />
-              <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Historial de Compras</h3>
-              <p className="text-[11px] text-gray-400 mt-1 font-medium">Revisa tus compras hechas y califica el servicio.</p>
-            </div>
-
-            <div 
+            <div
               onClick={() => navigate('/password')} 
-              className="border border-gray-200/80 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue hover:shadow-md transition-all group bg-slate-50/30 flex flex-col items-center text-center"
+              className="border border-sabana-blue-light/40 p-6 rounded-3xl cursor-pointer hover:border-sabana-blue transition-all group"
             >
-              <Settings className="text-sabana-blue mb-3 group-hover:rotate-45 transition-transform" size={28} />
-              <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Seguridad</h3>
-              <p className="text-[11px] text-gray-400 mt-1 font-medium">Actualiza tu contraseña y preferencias.</p>
+              <Settings className="text-sabana-blue mb-4 group-hover:rotate-90 transition-transform" size={32} />
+              <h3 className="font-bold text-sabana-blue">Configuración</h3>
+              <p className="text-sm text-gray-500">Cambiar contraseña y seguridad</p>
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* MODAL 1: PANEL DE OPERACIONES GESTIÓN */}
+      {/* MODAL PRINCIPAL DE GESTIÓN */}
       {showMgmtModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 relative shadow-2xl border animate-fadeIn">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 relative shadow-2xl border border-gray-100">
             <button 
-              onClick={() => setShowMgmtModal(false)} 
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={() => setShowMgmtModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-sabana-blue transition-colors"
             >
-              <X size={20} />
+              <X size={24} />
             </button>
-            <h3 className="text-sm font-roboto-slab font-black text-sabana-blue mb-6 uppercase tracking-wider">Panel Operativo</h3>
+
+            <h3 className="text-xl font-black text-sabana-blue uppercase tracking-tight mb-2">
+              Panel de Operaciones
+            </h3>
+            <p className="text-sm text-gray-400 font-medium mb-6">
+              Selecciona la acción comercial que deseas realizar.
+            </p>
+
             <div className="flex flex-col gap-4">
-              
+              {isSellerOrAdmin ? (
+                <div 
+                  onClick={() => {
+                    setShowMgmtModal(false);
+                    navigate('/PersonalInventory');
+                  }}
+                  className="flex items-center gap-4 border border-gray-100 p-4 rounded-2xl cursor-pointer hover:border-sabana-blue hover:bg-gray-50/50 transition-all group"
+                >
+                  <div className="bg-sabana-blue/10 p-3 rounded-xl text-sabana-blue group-hover:animate-bounce group-hover:scale-105 transition-transform">
+                    <Package size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sabana-blue text-sm">Mi Inventario de Venta</h4>
+                    <p className="text-xs text-gray-500">Añade, edita o elimina tus publicaciones del campus</p>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => {
+                    setShowMgmtModal(false);
+                    navigate('/PersonalInventory');
+                  }}
+                  className="flex items-center gap-4 border-2 border-dashed border-gray-200 p-4 rounded-2xl cursor-pointer hover:border-sabana-softGold bg-amber-50/20 hover:bg-white transition-all group"
+                >
+                  <div className="bg-amber-500/10 p-3 rounded-xl text-amber-500 group-hover:animate-bounce">
+                    <Store size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sabana-blue text-sm">¡Quiero ser vendedor!</h4>
+                    <p className="text-xs text-gray-400">Publica tu primer artículo para activar tu rol comercial</p>
+                  </div>
+                </div>
+              )}
+
               <div 
-                onClick={() => { setShowMgmtModal(false); navigate('/PersonalInventory'); }} 
-                className="flex items-center gap-4 border border-gray-100 p-4 rounded-2xl cursor-pointer hover:border-sabana-blue hover:bg-slate-50 transition-all"
+                onClick={() => {
+                  setShowMgmtModal(false);
+                  setShowHistoryModal(true);
+                  fetchPurchaseHistory();
+                }}
+                className="flex items-center gap-4 border border-gray-100 p-4 rounded-2xl cursor-pointer hover:border-sabana-blue hover:bg-gray-50/50 transition-all group"
               >
-                <Store size={22} className="text-sabana-blue shrink-0" />
+                <div className="bg-sabana-blue/10 p-3 rounded-xl text-sabana-blue group-hover:rotate-12 group-hover:animate-spin-slow">
+                  <Clock size={24} /> 
+                </div>
                 <div>
-                  <h4 className="font-black text-slate-800 text-xs uppercase tracking-wide">
-                    {isSellerOrAdmin ? 'Mi Inventario y Ventas' : 'Quiero ser Vendedor'}
-                  </h4>
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-medium">Publica productos y visualiza solicitudes de la comunidad.</p>
+                  <h4 className="font-bold text-sabana-blue text-sm">Historial de Compras</h4>
+                  <p className="text-xs text-gray-500">Revisa tus recibos y califica tus productos</p>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL 2: HISTORIAL DE COMPRAS INTEGRADO CON FLUJO DE ENTREGA */}
+      {/* SUB-MODAL COMPLETO DEL HISTORIAL DE COMPRAS Y CALIFICACIONES */}
       {showHistoryModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 relative shadow-2xl flex flex-col max-h-[85vh] animate-fadeIn">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 relative shadow-2xl flex flex-col max-h-[85vh]">
             <button 
-              onClick={() => { setShowHistoryModal(false); setActiveReviewProd(null); }} 
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={() => {
+                setShowHistoryModal(false);
+                setActiveReviewProd(null);
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-sabana-blue transition-colors"
             >
-              <X size={20} />
+              <X size={24} />
             </button>
-            
-            <div className="border-b pb-3 mb-4 shrink-0">
-              <h3 className="text-sm font-roboto-slab font-black text-sabana-blue uppercase tracking-wider">Mis Pedidos Realizados</h3>
-              <p className="text-[11px] text-gray-400 font-bold mt-0.5 uppercase">Visualiza las respuestas de tus vendedores y confirma recepciones.</p>
+
+            <div className="mb-4">
+              <h3 className="text-xl font-black text-sabana-blue uppercase tracking-tight flex items-center gap-2">
+                <Clock className="text-sabana-blue-light" size={24} /> Mis Compras Realizadas
+              </h3>
+              <p className="text-xs text-gray-400 font-medium">Lista de órdenes despachadas asociadas a tu cuenta institucional.</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {/* Contenedor con Scroll para las órdenes */}
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4 my-2">
               {loadingOrders ? (
-                <p className="text-center py-10 text-xs font-black text-gray-400 uppercase tracking-widest">Cargando tus compras...</p>
+                <p className="text-center text-sm text-gray-500 py-8 font-medium">Buscando tus recibos del campus...</p>
               ) : orders.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed space-y-2">
-                  <ShoppingBag className="mx-auto text-gray-300" size={32} />
-                  <p className="text-xs font-bold text-slate-600">Aún no has comprado ningún producto en el marketplace.</p>
+                <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/40">
+                  <Clock className="mx-auto text-gray-300 mb-2" size={40} />
+                  <p className="text-sm font-bold text-sabana-blue">Aún no registras compras</p>
+                  <p className="text-xs text-gray-400 mt-1">Los artículos que adquieras en la vitrina se listarán aquí.</p>
                 </div>
               ) : (
                 orders.map((order) => (
-                  <div key={order.id} className="border border-gray-100 bg-slate-50/40 p-4 rounded-2xl space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b pb-2">
-                      <div>
-                        <span className="text-[9px] font-black bg-slate-200 text-slate-700 px-2 py-0.5 rounded">ORDEN #{order.id}</span>
-                        <p className="text-[10px] text-gray-400 font-bold mt-1">
-                          Fecha: {order.createdAt ? new Date(order.createdAt).toLocaleDateString('es-CO') : 'Reciente'}
-                        </p>
-                      </div>
-                      <div className="text-right sm:text-right">
-                        <span className="text-[9px] font-black text-gray-400 uppercase block tracking-wider">Estado Global</span>
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${
-                          order.status === 'DELIVERED' || order.status === 'ENTREGADO' ? 'text-emerald-600' :
-                          order.status === 'READY_FOR_DELIVERY' ? 'text-amber-500 animate-pulse' : 'text-sabana-blue-light'
-                        }`}>
-                          {order.status === 'DELIVERED' || order.status === 'ENTREGADO' ? '✓ Entregado' :
-                           order.status === 'READY_FOR_DELIVERY' ? '⏰ Listo para Retirar' : '⚙️ En Preparación'}
+                  <div key={order.id} className="border border-gray-100 rounded-2xl p-4 bg-gray-50/50 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-100 pb-2 mb-2 gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-black text-sabana-blue uppercase tracking-wider bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm">
+                          Orden #{order.id}
                         </span>
+                        
+                        {/* Renderizado de Badges con lógica e identidades del flujo de 3 pasos */}
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                          order.status === 'ENTREGADO' || order.status === 'DELIVERED'
+                            ? 'bg-emerald-100 text-emerald-700' 
+                            : order.status === 'QUIERO_MI_PRODUCTO'
+                            ? 'bg-purple-100 text-purple-700 animate-pulse'
+                            : order.status === 'LISTO' || order.status === 'READY_FOR_DELIVERY'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {order.status === 'READY_FOR_DELIVERY' ? 'LISTO' : order.status === 'DELIVERED' ? 'ENTREGADO' : (order.status || 'PENDIENTE')}
+                        </span>
+                        
+                        {/* Botón interactivo para coordinar entrega en campus cuando pasa a LISTO o READY_FOR_DELIVERY */}
+                        {(order.status === 'LISTO' || order.status === 'READY_FOR_DELIVERY') && (
+                          <button
+                            onClick={() => handleQuieroMiProducto(order.id)}
+                            disabled={updatingOrderId === order.id}
+                            className="flex items-center gap-1 bg-sabana-blue text-white text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-wider hover:bg-sabana-blue-hover transition-all disabled:opacity-50 shadow-xs animate-bounce"
+                          >
+                            <Hand size={10} /> ¡Quiero mi producto!
+                          </button>
+                        )}
+                        
+                        <p className="w-full text-[10px] text-gray-400 font-medium mt-0.5">Destino: Universidad de la Sabana</p>
+                      </div>
+                      <div className="text-left sm:text-right shrink-0">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</p>
+                        <p className="text-base font-black text-sabana-blue">${order.totalAmount?.toLocaleString('es-CO')}</p>
                       </div>
                     </div>
-
-                    {/* LISTA DE ARTÍCULOS CONTENIDOS EN LA ORDEN */}
+                    
+                    {/* Items comprados en esa orden */}
                     <div className="space-y-2">
-                      {order.items?.map((prod, idx) => {
-                        const isDeliveredState = order.status === 'DELIVERED' || order.status === 'ENTREGADO';
+                      {order.items?.map((item, idx) => {
+                        const isSelectedForReview = activeReviewProd?.orderId === order.id && activeReviewProd?.productId === item.productId;
                         
+                        // Validar si este item particular ya fue calificado en el localStorage
+                        const isReviewed = localStorage.getItem(`reviewed_${order.id}_${item.productId}`) === 'true';
+
                         return (
-                          <div key={prod.id || idx} className="bg-white p-3 rounded-xl border border-gray-100 flex flex-col gap-3">
-                            <div className="flex justify-between items-start gap-2 text-xs">
-                              <div>
-                                <h5 className="font-black text-slate-800 uppercase tracking-tight line-clamp-1">{prod.title || `Artículo #${prod.productId}`}</h5>
-                                <p className="text-[10px] text-gray-400 font-bold mt-0.5">Cantidad: {prod.quantity} u. • Vendedor: {prod.ownerEmail}</p>
-                              </div>
-                              <p className="font-black text-sabana-blue shrink-0">${(Number(prod.price || 0) * Number(prod.quantity)).toLocaleString('es-CO')}</p>
-                            </div>
-
-                            {/* LÓGICA DE CONTROL DE BOTONES EXCLUSIVOS COMPRADOR */}
-                            <div className="border-t pt-2 mt-1">
+                          <div key={idx} className="flex flex-col bg-white p-3 rounded-xl border border-gray-50 space-y-2">
+                            <div className="flex justify-between items-center text-xs font-medium text-gray-600 gap-2">
+                              <span className="truncate">
+                                {item.title || `Artículo ID: ${item.productId}`}{' '}
+                                <span className="text-gray-400 font-bold shrink-0">({item.price} x {item.quantity})</span>
+                              </span>
                               
-                              {/* CASO 1 Y 2: NO HA SIDO CONFIRMADO COMO ENTREGADO POR COMPRADOR */}
-                              {!isDeliveredState && (
-                                <div className="space-y-1.5">
-                                  <button
-                                    disabled={order.status !== 'READY_FOR_DELIVERY'}
-                                    onClick={() => handleConfirmDelivery(order.id)}
-                                    className={`w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                      order.status === 'READY_FOR_DELIVERY'
-                                        ? 'bg-sabana-blue text-white hover:bg-sabana-blue-hover active:scale-[0.98] shadow-sm cursor-pointer'
-                                        : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50'
-                                    }`}
-                                  >
-                                    Quiero recibir mi producto
-                                  </button>
-                                  
-                                  {order.status !== 'READY_FOR_DELIVERY' && (
-                                    <p className="text-[9px] text-slate-400 italic font-bold text-center">
-                                      * Bloqueado hasta que el vendedor cambie el estado a "Listo para entregar".
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* CASO 3: EL PEDIDO SE ENCUENTRA EN ESTADO "DELIVERED" -> SE PERMITE CALIFICAR */}
-                              {isDeliveredState && (
-                                <div className="animate-fadeIn">
-                                  {activeReviewProd?.orderId === order.id && activeReviewProd?.productId === prod.id ? (
-                                    
-                                    /* ENTRADA DEL FORMULARIO DE RESEÑAS */
-                                    <form onSubmit={handleReviewSubmit} className="bg-slate-50 p-3 rounded-xl border border-gray-200 mt-2 space-y-3">
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-slate-500 uppercase">Puntúa al Vendedor:</span>
-                                        <div className="flex items-center gap-1">
-                                          {[1, 2, 3, 4, 5].map((star) => (
-                                            <button
-                                              type="button"
-                                              key={star}
-                                              onClick={() => setRating(star)}
-                                              onMouseEnter={() => setHoverRating(star)}
-                                              onMouseLeave={() => setHoverRating(0)}
-                                              className="text-amber-400 transition-transform active:scale-125"
-                                            >
-                                              <Star 
-                                                size={16} 
-                                                fill={(hoverRating || rating) >= star ? "currentColor" : "none"} 
-                                                className={(hoverRating || rating) >= star ? "text-amber-400" : "text-gray-300"}
-                                              />
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-
-                                      <textarea
-                                        rows="2"
-                                        maxLength="250"
-                                        placeholder="Escribe tu experiencia con la entrega del producto en el campus..."
-                                        className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:border-sabana-blue outline-none resize-none"
-                                        value={comment}
-                                        onChange={(e) => setComment(e.target.value)}
-                                      />
-
-                                      <div className="flex justify-end gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => { setActiveReviewProd(null); setRating(0); setComment(""); }}
-                                          className="px-3 py-1.5 bg-slate-200 text-slate-700 text-[10px] font-black uppercase rounded-lg hover:bg-slate-300 transition-colors"
-                                        >
-                                          Cancelar
-                                        </button>
-                                        <button
-                                          type="submit"
-                                          disabled={submittingReview}
-                                          className="bg-sabana-blue text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-sabana-blue-hover transition-all disabled:opacity-50 shadow-xs"
-                                        >
-                                          {submittingReview ? 'Guardando...' : 'Enviar Reseña'}
-                                        </button>
-                                      </div>
-                                    </form>
-                                  ) : (
-                                    
-                                    /* ACCESORIO INICIAL: BOTÓN CALIFICAR */
-                                    <button
-                                      onClick={() => setActiveReviewProd({ orderId: order.id, productId: prod.id, sellerEmail: prod.ownerEmail })}
-                                      className="w-full bg-amber-50 hover:bg-amber-100 text-sabana-blue py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-amber-200/60 flex items-center justify-center gap-1.5"
-                                    >
-                                      <Star size={12} className="fill-current text-amber-500" /> Calificar Servicio del Vendedor
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className="font-bold text-gray-700">
+                                  ${(Number(item.price || 0) * Number(item.quantity)).toLocaleString('es-CO')}
+                                </span>
+                                
+                                {/* Sección de Calificaciones controlada por el estado de la Orden (ENTREGADO/DELIVERED) y LocalStorage */}
+                                {(order.status === 'ENTREGADO' || order.status === 'DELIVERED') && (
+                                  <div className="min-w-[70px] text-right">
+                                    {isReviewed ? (
+                                      <span className="text-[10px] text-emerald-600 font-black uppercase tracking-wider flex items-center gap-1 justify-end">
+                                        <CheckCircle2 size={12} /> Calificado
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() => setActiveReviewProd(isSelectedForReview ? null : {
+                                          orderId: order.id,
+                                          productId: item.productId,
+                                          sellerEmail: item.ownerEmail
+                                        })}
+                                        className="px-3 py-1 bg-sabana-light text-sabana-blue border border-sabana-blue/20 rounded-lg text-[10px] font-black uppercase hover:bg-sabana-blue hover:text-white transition-all shadow-xs"
+                                      >
+                                        {isSelectedForReview ? 'Cancelar' : 'Calificar'}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
+
+                            {/* Despliegue del Formulario de Calificación */}
+                            {isSelectedForReview && !isReviewed && (
+                              <form onSubmit={handleSendReview} className="border-t border-gray-100 pt-3 mt-2 animate-fadeIn space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-black text-gray-400 uppercase">Calificación:</span>
+                                  <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star
+                                        key={star}
+                                        size={18}
+                                        className={`cursor-pointer transition-colors ${
+                                          star <= rating ? 'text-amber-500 fill-amber-400' : 'text-gray-200'
+                                        }`}
+                                        onClick={() => setRating(star)}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <textarea
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    placeholder="Cuéntanos qué tal la entrega y el estado de tu artículo en el campus..."
+                                    rows="2"
+                                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-slate-50/50 focus:outline-none focus:border-sabana-blue transition-colors"
+                                  />
+                                </div>
+                                <div className="flex justify-end">
+                                  <button
+                                    type="submit"
+                                    disabled={submittingReview}
+                                    className="bg-sabana-blue text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-sabana-blue-hover transition-all disabled:opacity-50 shadow-xs"
+                                  >
+                                    {submittingReview ? 'Guardando...' : 'Enviar Reseña'}
+                                  </button>
+                                </div>
+                              </form>
+                            )}
                           </div>
                         );
                       })}
@@ -389,17 +420,15 @@ const UserProfile = () => {
               )}
             </div>
             
-            <div className="pt-3 border-t shrink-0">
-              <button 
-                onClick={() => {
-                  setShowHistoryModal(false);
-                  setActiveReviewProd(null);
-                }}
-                className="w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-colors"
-              >
-                Cerrar Historial
-              </button>
-            </div>
+            <button 
+              onClick={() => {
+                setShowHistoryModal(false);
+                setActiveReviewProd(null);
+              }}
+              className="w-full bg-sabana-blue text-white py-3 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-sabana-blue-hover transition-colors mt-2"
+            >
+              Cerrar Historial
+            </button>
           </div>
         </div>
       )}
